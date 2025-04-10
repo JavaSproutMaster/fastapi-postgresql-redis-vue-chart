@@ -10,6 +10,7 @@ import {
 import store from '@/store';
 
 import CompanyView from '../views/company';
+import TopFundLanding from '../views/landing';
 
 const isAuthenticated = (
   to: RouteLocationNormalized,
@@ -43,16 +44,28 @@ const routes: Array<RouteRecordRaw> = [
     beforeEnter: (to, from, next) => next('/company/NKE'),
   },
   {
+    path: '/company/:symbol/notes',
+    name: 'companyNotes',
+    component: () => import(/* webpackChunkName: "companyNotes" */ '../views/company/CompanyNoteView.vue'),
+    beforeEnter: isAuthenticated,
+  },
+  {
     path: '/company/:symbol',
     name: 'company',
     component: () => import(/* webpackChunkName: "company" */ '../views/company'),
     beforeEnter: isAuthenticated,
   },
   {
+    path: '/financials/:symbol/:rowKey',
+    name: 'companyFinancial',
+    component: () => import(/* webpackChunkName: "companyFinancial" */ '../views/company/CompanyRowChartView.vue'),
+    beforeEnter: isAuthenticated,
+  },
+  {
     path: '/list/:id',
     name: 'list',
     component: () => import(/* webpackChunkName: "list" */ '../views/list'),
-    beforeEnter: isAuthenticated,
+    // beforeEnter: isAuthenticated,
   },
   {
     path: '/login',

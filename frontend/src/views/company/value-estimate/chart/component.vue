@@ -57,9 +57,8 @@ export default defineComponent({
       if (!context) {
         return data;
       }
-
       const index = props.company.financials.actual.length - 1;
-      const netDebt = props.company.financials.actual[index].netDebt || 0;
+      const netDebt = props.company.financials.actual[index]?.netDebt || 0;
       const enterpriseValue = netDebt + props.company.valuation.marketCap;
 
       context = props.company.financials.estimated[0];  // eslint-disable-line
@@ -70,7 +69,7 @@ export default defineComponent({
         marketCap = 0;
       }
 
-      data.labels?.push('NET DEBT', 'PREDF. STOCK', ['MINORITY', 'INTEREST'], ['MARKET CAP', 'CURRENT'], ['ENTERPRISE', 'VALUE'], ['MARKET CAP', 'YOUR MODEL']);
+      data.labels?.push('NET DEBT', 'PREFD. STOCK', ['MINORITY', 'INTEREST'], ['MARKET CAP', 'CURRENT'], ['ENTERPRISE', 'VALUE'], ['MARKET CAP', 'YOUR MODEL']);
       data.datasets.push({
         data: [
           netDebt,

@@ -84,9 +84,9 @@ export default defineComponent({
       columnName: '',
       comments: props.company.comments,
       hideCategories: true,
+      tableType: 'estimateTable',
     }));
-    console.log(' ******************************** this is estimate table data ********************************');
-    console.log(estimateTableData.value);
+
     return {
       estimateTableData,
     };

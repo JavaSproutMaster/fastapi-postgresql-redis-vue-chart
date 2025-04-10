@@ -23,14 +23,16 @@ export default defineComponent({
 
 <style scoped>
 th {
-  min-width: 76px;
+  /* min-width: 76px; */
   height: 44px;
   padding: 0 4px;
+  /* width: 76px; */
 }
 
 .table-column {
   color: var(--theme-dark-color-1);
   font-size: 12px;
   font-weight: 600;
+  display: flex;
 }
 </style>

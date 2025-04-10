@@ -1,29 +1,63 @@
 <template>
   <div class="calculator">
     <div class="calculator-menu">
-      <button class="button" @click="showListModal">
+      <!-- <button class="button" @click="showListModal"> -->
+      <Dropdown class="list-header-button" :menuWidth="'200px'"
+        :menuTransform="'translateY(10px)'">
         <img src="@/assets/icons/add.svg" alt="Add">
-        Add to list
-      </button>
-      <template
-        v-for="(list, index) in lists"
-        :key="index"
-      >
-        ●
-        <button
-          class="list-button"
-          :class="{
-            'list-button__active': list.isAdded,
-          }"
-          @click="toggleList(list)"
-        >{{ list.name }}</button>
-      </template>
+        <div>Add to list</div>
+        <template #content>
+          <div ref="listsContent">
+            <div class="list-add-field-search">
+              <Input
+              v-model:value="searchList"
+              type="string"
+              placeholder="Search"
+              @focusin="blurHandler"/>
+            </div>
+            <div class="list-column-fields" v-if="showLists">
+              <div v-for="(list, index) in filteredLists" :key="index"
+              class="list-column-field-item">
+                <Checkbox v-model:value="list.isAdded"/>
+                {{ list.name }}
+              </div>
+            </div>
+            <div style="display: flex; gap: 4px; padding-top: 10px;" v-if="showLists">
+              <Button style="width: 100%;"
+                :size="'small'"
+                @click="add2List">Add</Button>
+              <Button style="width: 100%; white-space: nowrap;"
+                :type="'secondary'"
+                :size="'small'"
+                @click="showListModal">Create NEW</Button>
+            </div>
+          </div>
+        </template>
+      </Dropdown>
+      <!-- </button> -->
+      <div class="add-list">
+        <template
+          v-for="(list, index) in addedLists.filter((list: LightList) => list.isAdded)"
+          :key="index"
+        >
+          <div class="list-item">
+            ●
+            <button
+              class="list-button"
+              :class="{
+                'list-button__active': list.isAdded,
+              }"
+              @click="toggleList(list)"
+            >{{ list.name }}</button>
+          </div>
+        </template>
+      </div>
     </div>
     <Card>
       <div class="calculator-range">
-        <p>{{ (company.data.week52Low || 0).toLocaleString() }}</p>
-        <h4>54-week range</h4>
-        <p>{{ (company.data.week52High || 0).toLocaleString() }}</p>
+        <p>{{ displayPrice(company.data.week52Low || 0)}}</p>
+        <h4>52-week range</h4>
+        <p>{{ displayPrice(company.data.week52High || 0)}}</p>
       </div>
       <div class="calculator-bar">
         <div class="calculator-circle" :style="{
@@ -51,6 +85,9 @@
           :class="{
             'button__selected': forecastType === 'averages' && company.forecast.value === undefined
           }"
+          :style="{
+            gap: '6px'
+          }"
           :type="
             forecastType === 'averages' && company.forecast.value === undefined
               ? 'default' : 'secondary'
@@ -63,7 +100,10 @@
             revenue growth rate
           </Help>
         </Button>
-        <Button :type="forecastType === 'analysts' ? 'default' : 'secondary'">
+        <Button :type="forecastType === 'analysts' ? 'default' : 'secondary'"
+          :style="{
+            gap: '6px'
+          }">
           Analysts
           <Help>Forecast is based on analyst consensus</Help>
         </Button>
@@ -71,11 +111,23 @@
           :class="{'button__selected': forecastType === 'custom' && company.forecast}"
           :type="forecastType === 'custom' && company.forecast ? 'default' : 'secondary'"
           @click="company.forecasts.length > 0 && setForecast(company.forecasts[0])"
+          :style="{
+            gap: '6px'
+          }"
         >
           Custom
-          <Help>
+          <!-- <Help>
             Forecast is based on your assumptions which you can edit
             under Financials below
+          </Help> -->
+          <Help style="
+            padding: 8px 0;
+            margin-left: 4px;"
+            align="top_left"
+            hoverWidth="225px"
+            hoverPadding="12px 20px 12px 20px">
+            Forecast is based on your assumptions which you can edit
+              under Financials below
           </Help>
         </Button>
       </div>
@@ -176,9 +228,14 @@ import {
   reactive,
   onUpdated,
   onMounted,
+  onUnmounted,
   watch,
 } from 'vue';
 import { useStore } from 'vuex';
+
+import { DropdownComponent as Dropdown, DropdownValue } from '@/components/ui/dropdown';
+import Checkbox from '@/components/ui/CheckboxComponent.vue';
+import Input from '@/components/ui/InputComponent.vue';
 
 import Card from '@/components/ui/CardComponent.vue';
 import Help from '@/components/ui/HelpComponent.vue';
@@ -197,6 +254,8 @@ import { LightList } from '@/rest-api/lists/assets';
 import * as api from '@/rest-api/lists';
 
 import { SHOW_MODAL } from '@/store/actions/application';
+import { list } from '@/rest-api/companies';
+import { useRouter } from 'vue-router';
 
 export default defineComponent({
   name: 'CompanyCalculator',
@@ -205,6 +264,9 @@ export default defineComponent({
     Help,
     Button,
     Table,
+    Dropdown,
+    Checkbox,
+    Input,
   },
   props: {
     company: {
@@ -214,13 +276,16 @@ export default defineComponent({
   },
   setup(props) {
     const store = useStore();
-
+    const router = useRouter();
+    const listsContent = ref<HTMLElement | null>(null);
     const forecastType = ref<string>();
     const modelPrice = ref<number>();
     const forecastMenu = ref(false);
-
+    const showLists = ref(false);
     const lists: LightList[] = reactive([]);
-
+    const filteredLists = ref<LightList[]>([]);
+    const addedLists = ref<LightList[]>([]);
+    const searchList = ref('');
     const circlePosition = computed(() => {
       const value = props.company.data.stockPrice;
       const low = props.company.data.week52Low;
@@ -243,7 +308,18 @@ export default defineComponent({
 
       return resultValue;
     });
-
+    const displayPrice = (value: number) => {
+      let result = 0;
+      if (value > 1) {
+        result = Math.floor(value * 10) / 10;
+        return result.toFixed(1);
+      }
+      result = Math.floor(value * 100) / 100;
+      return result.toFixed(2);
+    };
+    const blurHandler = () => {
+      showLists.value = true;
+    };
     watch(() => props.company.financials.estimated, () => {
       const company = props.company as any;
 
@@ -353,12 +429,31 @@ export default defineComponent({
       store.commit(SHOW_MODAL, 'new-list');
     };
 
-    const toggleList = (list: LightList) => {
-      list.isAdded = !list.isAdded; // eslint-disable-line
-
+    const toggleList = async (list: LightList) => {
+      // list.isAdded = !list.isAdded; // eslint-disable-line
+      // const method = list.isAdded ? api.add : api.remove;
+      // filteredLists.value?.forEach((filteredList: LightList) => {
+      //   if (filteredList.id === list.id) {
+      //     Object.assign(filteredList, list);
+      //   }
+      // });
+      // method(list.id, props.company.data.symbol);
+      // await router.push({ name: 'list', params: { id: list.id } });
+      // window.location.reload();
+      window.location.href = `/list/${list.id}`;
+    };
+    const addList = (list: LightList) => {
       const method = list.isAdded ? api.add : api.remove;
 
       method(list.id, props.company.data.symbol);
+    };
+    const add2List = () => {
+      filteredLists.value.forEach((list) => {
+        addList(list);
+      });
+      addedLists.value = JSON.parse(
+        JSON.stringify(filteredLists.value.filter((list) => list.isAdded)),
+      );
     };
 
     onUpdated(() => {
@@ -373,11 +468,42 @@ export default defineComponent({
       api.lists(props.company.data.symbol).then((payload) => {
         lists.splice(0, lists.length);
         Object.assign(lists, payload);
+        filteredLists.value = JSON.parse(JSON.stringify(payload));
+        addedLists.value = JSON.parse(JSON.stringify(payload));
       });
+    });
+
+    watch(searchList, () => {
+      if (!searchList.value || searchList.value === '') {
+        filteredLists.value = lists;
+      }
+      const searchString = searchList.value.toLocaleLowerCase();
+      const toReturn = lists.filter((list: LightList) => {
+        if (list.name.toLocaleLowerCase().includes(searchString)) return true;
+        return false;
+      });
+      filteredLists.value = toReturn;
+    });
+
+    const clickHandler = (event: Event | KeyboardEvent) => {
+      if (event.type !== 'keydown' || (event as KeyboardEvent).code !== 'Enter') {
+        const target = event.target as HTMLElement;
+        if (listsContent.value && listsContent.value.contains(target)) return;
+        showLists.value = false;
+      }
+    };
+
+    onMounted(() => {
+      document.addEventListener('click', clickHandler);
+    });
+
+    onUnmounted(() => {
+      document.removeEventListener('click', clickHandler);
     });
 
     return {
       lists,
+      filteredLists,
       forecastType,
       circlePosition,
       calculatorTableData,
@@ -385,9 +511,16 @@ export default defineComponent({
       marketValue,
       marketPosition,
       forecastMenu,
+      showLists,
+      listsContent,
+      searchList,
+      addedLists,
+      add2List,
+      blurHandler,
       setForecast,
       showListModal,
       toggleList,
+      displayPrice,
     };
   },
 });
@@ -401,15 +534,16 @@ export default defineComponent({
 .calculator > .calculator-menu {
   display: flex;
   gap: 8px;
-  align-items: center;
+  /* align-items: center; */
   font-size: 12px;
   margin-top: 8px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
-.calculator > .calculator-menu > .button {
+.calculator > .calculator-menu .dropdown-value {
   display: flex;
   align-items: center;
+  text-wrap-mode: nowrap;
   gap: 8px;
   font-weight: 800;
   color: var(--theme-link-color);
@@ -418,6 +552,22 @@ export default defineComponent({
   border: none;
   outline: none;
   cursor: pointer;
+  /* padding-top: 8px; */
+}
+
+.calculator > .calculator-menu .add-list {
+  display: flex;
+  /* width: 100%; */
+  gap: 4px;
+  flex-flow: wrap;
+}
+.calculator > .calculator-menu .add-list .list-item {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  /* margin-top: 8px; */
+  margin-bottom: 12px;
+  gap: 4px;
 }
 
 .calculator .calculator-range {
@@ -447,7 +597,7 @@ export default defineComponent({
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  z-index: 2;
+  z-index: 1;
 }
 
 .calculator .calculator-bar > .calculator-circle > p {
@@ -704,6 +854,7 @@ export default defineComponent({
 }
 
 .list-button {
+  text-wrap-mode: nowrap;
   font-weight: 600;
   cursor: pointer;
   border: none;
@@ -713,5 +864,37 @@ export default defineComponent({
 
 .list-button.list-button__active {
   color: var(--theme-link-color);
+}
+
+.list-add-field-search {
+  position: relative;
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+.list-add-field-search::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 8px;
+  width: 16px;
+  height: 16px;
+  background: no-repeat url('@/assets/icons/search.svg');
+  background-size: 100% 100%;
+  transform: translateY(-50%);
+  cursor: default;
+}
+
+.list-add-field-search>input {
+  width: 100%;
+  color: var(--theme-link-color);
+  padding: 8px 8px 8px 33px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.list-add-field-search>input::placeholder {
+  color: #7283FA;
 }
 </style>

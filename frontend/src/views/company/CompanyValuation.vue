@@ -7,33 +7,35 @@
           <p>
             Free Cash Flow Yield
             <Help>
-              FCF Yield = Last FY free cash flow per share / current market value per share
+              FCF Yield TTM = Trailing Twelve Months free cash flow per share /
+              current market price per share
             </Help>
           </p>
           <p>{{ render(company.valuation.freeCashFlowYield, renderers.percentage) }}</p>
         </div>
         <div>
-          <p>Dividend Yield</p>
-          <p>{{ render(company.valuation.dividendYield, renderers.ratio) }}</p>
+          <p>Dividend Yield TTM</p>
+          <p>{{ render(company.valuation.dividendYield, renderers.percentage) }}</p>
         </div>
         <div>
-          <p>Market cap $</p>
+          <p>Market cap {{ company.data.currency === 'USD' ? '$' :
+        '' }}</p>
           <p>{{ render(company.valuation.marketCap, renderers.usd) }}</p>
         </div>
       </div>
       <div class="valuation-item">
         <div>
           <p>
-            Price / Earnings LTM:
+            Price / Earnings TTM
           </p>
           <p>{{ render(company.valuation.priceEarningsRatioLtm, renderers.ratio) }}</p>
         </div>
         <div>
-          <p>Price / Book:</p>
+          <p>Price / Book TTM</p>
           <p>{{ render(company.valuation.priceBookRatio, renderers.ratio) }}</p>
         </div>
         <div>
-          <p>PEG</p>
+          <p>PEG TTM</p>
           <p>{{ render(company.valuation.peg, renderers.ratio) }}</p>
         </div>
       </div>
@@ -68,7 +70,9 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType, computed } from 'vue';
+import {
+  defineComponent, PropType, computed, ref,
+} from 'vue';
 
 import Help from '@/components/ui/HelpComponent.vue';
 import Card from '@/components/ui/CardComponent.vue';
@@ -78,8 +82,6 @@ import { ValuationAndEarnings } from '@/rest-api/companies/assets';
 
 import {
   usd,
-  ratio,
-  percentage,
 } from '@/components/ui/table/types/renderers';
 
 export default defineComponent({
@@ -100,15 +102,23 @@ export default defineComponent({
       return props.company.valuation[currentKey] === 0;
     }));
 
-    const render = (value: any, renderer: any) => {
-      if (!value || typeof value !== 'number') {
+    const render = (value: number, renderer: any) => {
+      if (!value || typeof value !== 'number' || value === 0) {
         return '-';
       }
 
       return renderer(value);
     };
+    const negative = (value: number): string => {
+      if (value < 0) {
+        return `(${Math.abs(value).toLocaleString()})`;
+      }
+      return value.toLocaleString();
+    };
 
-    console.log(props.company);
+    const ratio = (value: number): string => negative(Math.round(value * 10) / 10);
+
+    const percentage = (value: number): string => `${ratio(value)} %`;
 
     const renderers = {
       percentage,

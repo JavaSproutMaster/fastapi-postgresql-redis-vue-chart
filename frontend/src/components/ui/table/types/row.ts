@@ -2,7 +2,7 @@ export interface TableOverride {
   handler?: Function;
   size?: string;
   weight?: number;
-};
+}
 
 export interface TableOverrideObject {
   [key: string]: TableOverride;
@@ -13,10 +13,12 @@ export interface TableRow {
   key: string;
   showCounter: boolean;
   separate: boolean;
+  hidden?: boolean;
   editable?: boolean;
   handler?: Function;
   size?: string;
   weight?: number;
   override?: TableOverrideObject;
   help?: string;
+  terminalHelp?: string;
 }

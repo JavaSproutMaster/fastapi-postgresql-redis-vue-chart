@@ -3,6 +3,7 @@ import { CEO } from './ceo';
 interface Financial {
   year: number | string;
   quarter?: number | null;
+  quarterlyPeriod: number | string;
   netIncome?: number | null;
   sharesOutstanding?: number | null;
   cashFlowFromOperatingActivities?: number | null;

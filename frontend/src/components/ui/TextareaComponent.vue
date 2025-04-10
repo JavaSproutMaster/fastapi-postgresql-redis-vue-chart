@@ -3,9 +3,6 @@
     v-model="innerValue"
     ref="textarea"
     @input="calculateHeight"
-    :style="{
-      height: textareaHeight,
-    }"
   />
 </template>
 
@@ -16,6 +13,7 @@ import {
   computed,
   ref,
   onMounted,
+  onUnmounted,
 } from 'vue';
 
 export default defineComponent({
@@ -23,20 +21,36 @@ export default defineComponent({
   props: {
     value: {
       type: String,
-      required: true,
+      required: false,
+    },
+    focus: {
+      type: Boolean,
+      required: false,
+      default: false,
     },
   },
   emits: ['update:value'],
   setup(props, { emit }) {
     const textarea = ref();
-    const textareaHeight = ref('auto');
 
     const calculateHeight = () => {
-      textareaHeight.value = 'auto';
-
       nextTick(() => {
         if (textarea.value !== undefined) {
-          textareaHeight.value = `${textarea.value.scrollHeight}px`;
+          textarea.value.style.height = 'auto';
+
+          const maxLines = 8;
+          const lineHeight = parseInt(getComputedStyle(textarea.value).lineHeight, 10);
+
+          const maxHeight = maxLines * lineHeight;
+          console.log(maxHeight);
+          // Adjust height and overflow style
+          if (textarea.value.scrollHeight > maxHeight) {
+            textarea.value.style.height = `${maxHeight}px`;
+            textarea.value.style.overflowY = 'auto';
+          } else {
+            textarea.value.style.height = `${textarea.value.scrollHeight}px`;
+            textarea.value.style.overflowY = 'hidden';
+          }
         }
       });
     };
@@ -51,15 +65,38 @@ export default defineComponent({
     });
 
     onMounted(() => {
+      if (props.focus && textarea.value) {
+        textarea.value.focus();
+      }
       calculateHeight();
     });
-
+    onUnmounted(() => {
+      if (textarea.value) {
+        textarea.value.blur();
+      }
+    });
     return {
       textarea,
-      textareaHeight,
       calculateHeight,
       innerValue,
     };
   },
 });
 </script>
+
+<style scoped>
+
+textarea::-webkit-scrollbar {
+  width: 4px;
+}
+
+textarea::-webkit-scrollbar-track {
+  background: var(--theme-text-gray-2);
+}
+
+textarea::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  border: 3px solid var(--theme-link-color);
+}
+
+</style>

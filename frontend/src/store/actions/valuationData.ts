@@ -1,0 +1,2 @@
+export const MARKET_CAP = 'MARKET_CAP';
+export const ENTERPRISE_VALUE = 'ENTERPRISE_VALUE';

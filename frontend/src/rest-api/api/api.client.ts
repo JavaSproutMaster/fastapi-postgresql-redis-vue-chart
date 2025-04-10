@@ -43,6 +43,26 @@ const convertSnakeToCamel = (target: any): void => {  // eslint-disable-line
   }
 };
 
+const convertCamelToSnake = (target: any): void => {  // eslint-disable-line
+  if (Array.isArray(target)) {
+    target.forEach((t) => convertCamelToSnake(t));
+  }
+
+  if (isObject(target)) {
+    Object.keys(target).forEach((key: string) => {
+      if (isObject(target[key]) || Array.isArray(target[key])) {
+        convertCamelToSnake(target[key]);
+      }
+
+      const snakeCaseKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+      // Only assign if the snake case key is different from the original key
+      if (snakeCaseKey !== key) {
+        target[snakeCaseKey] = target[key];   // eslint-disable-line
+        delete target[key];   // eslint-disable-line
+      }
+    });
+  }
+};
 const httpRequest = (method: string) => async (
   url: string,
   payload: object = {},
@@ -70,11 +90,11 @@ const httpRequest = (method: string) => async (
   if (token) {
     (options.headers as AxiosHeaders).Authorization = `Bearer ${token}`;
   }
-
   if (payload) {
     if (method === 'get') {
       options.params = payload;
     } else if (method === 'post') {
+      convertCamelToSnake(payload);
       options.data = payload;
     }
   }
@@ -90,6 +110,7 @@ const httpRequest = (method: string) => async (
     response = await axios(options);
   } catch (error) {
     const err = error as AxiosError;
+
     if (!err.response) {
       throwApiError({
         data: { errors: generalError },
@@ -104,8 +125,13 @@ const httpRequest = (method: string) => async (
 
     if (response.status === 401) {
       localStorage.setItem('access-token', '');
-      window.location.reload();
+      window.location.replace(process.env.VUE_APP_FRONTEND_LOGIN_PAGE || 'http://localhost:8080/login');
       return response.data;
+    }
+    if (response.status === 403) {
+      if (url.startsWith('lists')) {
+        return response;
+      }
     }
 
     throwApiError(response);

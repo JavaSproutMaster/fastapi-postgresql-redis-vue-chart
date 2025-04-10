@@ -14,7 +14,8 @@ export const tableRows: TableRow[] = [
   {
     name: 'Earnings per share',
     key: 'earningsPerShare',
-    help: 'Basic (non-diluted) EPS = Net Income (07) / Shares Outstanding (20)',
+    // help: 'Basic (non-diluted) EPS = Net Income (07) / Shares Outstanding (20)',
+    help: 'Diluted EPS',
     showCounter: true,
     separate: false,
     handler: ratio,
@@ -40,6 +41,7 @@ export const tableRows: TableRow[] = [
   {
     name: 'Dividends per share',
     key: 'dividendsPerShare',
+    help: 'Adjusted for splits',
     showCounter: true,
     separate: false,
     handler: ratio,
@@ -251,7 +253,7 @@ export const tableRows: TableRow[] = [
   {
     name: 'Shares Outstanding',
     key: 'sharesOutstanding',
-    help: 'Shares Outstanding: number of shares outstanding as the difference between issued shares and treasury shares',
+    help: 'Diluted Weighted-average Shares Outstanding',
     showCounter: true,
     separate: false,
     handler: rounded,
@@ -325,7 +327,7 @@ export const tableRows: TableRow[] = [
     },
   },
   {
-    name: 'P/E Ratio LTM',
+    name: 'P/E Ratio',
     key: 'priceEarningsRatioLtm',
     showCounter: true,
     separate: false,
@@ -348,8 +350,9 @@ export const tableRows: TableRow[] = [
     },
   },
   {
-    name: 'Average Market Cap',
+    name: 'Market Cap',
     key: 'averageMarketCap',
+    help: 'End of Period Market Cap',
     showCounter: true,
     separate: false,
     handler: money,
@@ -375,7 +378,7 @@ export const tableRows: TableRow[] = [
     name: 'Average stock price',
     key: 'averageStockPrice',
     showCounter: true,
-    separate: false,
+    separate: true,
     handler: singleRatio,
     override: {
       '10 year gagr': {
@@ -383,123 +386,229 @@ export const tableRows: TableRow[] = [
       },
     },
   },
+  {
+    name: 'EnterPrise Value',
+    key: 'enterpriseValue',
+    showCounter: false,
+    separate: false,
+    handler: money,
+    hidden: true,
+    override: {
+      '10 year gagr': {
+        handler: percentage,
+      },
+    },
+  },
+  {
+    name: 'netDebt Estimate',
+    key: 'netDebtEstimate',
+    showCounter: false,
+    separate: false,
+    handler: money,
+    hidden: true,
+    override: {
+      '10 year gagr': {
+        handler: percentage,
+      },
+    },
+  },
+  {
+    name: 'required Return',
+    key: 'requiredReturn',
+    showCounter: false,
+    separate: false,
+    handler: percentage,
+    hidden: true,
+    override: {
+      '10 year gagr': {
+        handler: percentage,
+      },
+    },
+  },
+  {
+    name: 'terminal Value',
+    key: 'terminalValue',
+    showCounter: false,
+    separate: false,
+    handler: money,
+    hidden: true,
+    override: {
+      '10 year gagr': {
+        handler: percentage,
+      },
+    },
+  },
+  {
+    name: 'ㅤLess: preferred stock',
+    key: 'preferredStock',
+    showCounter: false,
+    separate: false,
+    handler: rounded,
+    hidden: true,
+  },
+  {
+    name: 'ㅤLess: minority interest',
+    key: 'minorityInterest',
+    showCounter: false,
+    separate: false,
+    handler: money,
+    hidden: true,
+  },
+  {
+    name: 'FCFF terminal growth rate',
+    key: 'freeCashFlowGrowthRate',
+    showCounter: false,
+    separate: false,
+    editable: true,
+    handler: percentage,
+    hidden: true,
+  },
 ];
 
 export const chartRows = {
   earningsPerShare: {
     axis: 'y-right',
     color: '#9650FB',
+    type: 'perShare',
   },
   freeCashFlowPerShare: {
     axis: 'y-right',
     color: '#E6D690',
+    type: 'perShare',
   },
   dividendsPerShare: {
     axis: 'y-right',
     color: '#EFDECD',
+    type: 'perShare',
   },
   dividendsPayout: {
     axis: 'y-right',
     color: '#A8E4A0',
+    type: 'percent',
   },
   revenue: {
     axis: 'y-left',
     color: '#3348FB',
+    type: 'millions',
   },
   revenueChange: {
     axis: 'y-right',
     color: '#CD00CD',
+    type: 'percent',
   },
   netIncome: {
     axis: 'y-left',
     color: '#37D27F',
+    type: 'millions',
   },
   margin: {
     axis: 'y-right',
     color: '#BDDA57',
+    type: 'percent',
   },
   cashFlowFromOperatingActivities: {
     axis: 'y-left',
     color: '#4E5754',
+    type: 'millions',
   },
   percentageCfoOfRevenue: {
     axis: 'y-right',
     color: '#008080',
+    type: 'percent',
   },
   capex: {
     axis: 'y-left',
     color: '#8C4743',
+    type: 'millions',
   },
   capexChange: {
     axis: 'y-right',
     color: '#EA899A',
+    type: 'percent',
   },
   freeCashFlow: {
     axis: 'y-left',
     color: '#01796F',
+    type: 'millions',
   },
   totalAssets: {
     axis: 'y-left',
     color: '#E6A8D7',
+    type: 'millions',
   },
   totalAssetsChange: {
     axis: 'y-right',
     color: '#FF7518',
+    type: 'percent',
   },
   totalLiabilities: {
     axis: 'y-left',
     color: '#90845B',
+    type: 'millions',
   },
   percentageLiabilitiesOfAssets: {
     axis: 'y-right',
     color: '#00A86B',
+    type: 'percent',
   },
   shareholdersEquity: {
     axis: 'y-left',
     color: '#8E7962',
+    type: 'millions',
   },
   netDebt: {
     axis: 'y-left',
     color: '#71BC78',
+    type: 'millions',
   },
   sharesOutstanding: {
     axis: 'y-left',
     color: '#03C03C',
+    type: 'millions',
   },
   sharesOutstandingChange: {
     axis: 'y-right',
     color: '#1A153F',
+    type: 'percent',
   },
   roa: {
     axis: 'y-right',
     color: '#E97451',
+    type: 'percent',
   },
   roe: {
     axis: 'y-right',
     color: '#FFBD88',
+    type: 'percent',
   },
   interestCoverage: {
     axis: 'y-right',
     color: '#8E4585',
+    type: 'perShare',
   },
   dividendYield: {
     axis: 'y-right',
     color: '#D2B48C',
+    type: 'percent',
   },
   priceEarningsRatioLtm: {
     axis: 'y-right',
     color: '#FF9966',
+    type: 'perShare',
   },
   averageMarketCap: {
     axis: 'y-left',
     color: '#9400D3',
+    type: 'millions',
   },
   freeCashFlowYield: {
     axis: 'y-right',
     color: '#F3A505',
+    type: 'percent',
   },
   averageStockPrice: {
-    axis: 'y-left',
+    axis: 'y-right',
     color: '#2A8D9C',
+    type: 'perShare',
   },
 };

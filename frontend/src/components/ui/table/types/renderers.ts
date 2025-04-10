@@ -17,4 +17,10 @@ export const ratio = (value: number): string => negative(Math.round(value * 100)
 
 export const percentage = (value: number): string => `${ratio(value)} %`;
 
-export const usd = (value: number): string => `$ ${numeric(value)}`;
+export const usd = (value: number): string => {
+  const currency = localStorage.getItem('currency');
+  if (!currency || currency === 'USD') {
+    return `$ ${numeric(value)}`;
+  }
+  return `${numeric(value)}`;
+};

@@ -4,9 +4,11 @@
     :class="{
       'checkbox-checked': innerValue,
       'checkbox__big': type === 'big',
+      'checkbox__medium': type === 'medium',
     }"
     @click="innerValue = !innerValue"
-  ></button>
+  >
+  </button>
 </template>
 
 <script lang="ts">
@@ -17,7 +19,7 @@ export default defineComponent({
   props: {
     type: {
       type: String,
-      enum: ['default', 'big'],
+      enum: ['default', 'big', 'medium'],
       default: 'default',
     },
     value: {
@@ -48,6 +50,8 @@ export default defineComponent({
   position: relative;
   width: 12px;
   height: 12px;
+  /* min-width: 12px;
+  min-height: 12px; */
   border: 2px solid #9AA6FA;
   border-radius: 1px;
   cursor: pointer;
@@ -60,13 +64,28 @@ export default defineComponent({
   height: 16px;
   border-color: var(--theme-text-gray);
   border-radius: 2px;
+  /* min-width: 16px;
+  min-height: 16px; */
+}
+
+.checkbox.checkbox__medium {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #131313;
+  border-radius: 2px;
+  min-width: 16px;
+  min-height: 16px;
+}
+
+.checkbox.checkbox__medium.checkbox-checked {
+  border: 1px solid var(--theme-link-color);;
 }
 
 .checkbox.checkbox-checked {
   border: 2px solid var(--theme-link-color);
 }
 
-.checkbox.checkbox__big.checkbox.checkbox-checked {
+.checkbox.checkbox__big.checkbox-checked {
   border-color: var(--theme-text-gray);
 }
 
@@ -94,4 +113,5 @@ export default defineComponent({
   background-size: 100% 100%;
   background-repeat: no-repeat;
 }
+
 </style>

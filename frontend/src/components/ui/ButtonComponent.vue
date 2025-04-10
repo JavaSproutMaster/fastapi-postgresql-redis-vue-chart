@@ -1,16 +1,16 @@
 <template>
-  <button
-    class="button"
-    :class="{
+  <button class="button" :class="{
       'button__transparent': type === 'transparent',
       'button__secondary': type === 'secondary',
       'button__small': size === 'small',
       'button__disabled': visuallyDisabled,
-    }"
-    :disabled="loading || disabled"
-  >
+      'tooltip': tooltipText,
+    }" :disabled="loading || disabled">
     <VueSpinner color="var(--theme-text-color-contrast)" v-if="loading" />
     <slot />
+    <button class="tooltiptext" v-if="tooltipText" @click="onClickTooltip">
+      {{ tooltipText }}
+    </button>
   </button>
 </template>
 
@@ -36,6 +36,10 @@ export default defineComponent({
       type: Boolean,
       default: false,
     },
+    tooltipText: {
+      type: String,
+      required: false,
+    },
     loading: {
       type: Boolean,
       default: false,
@@ -47,6 +51,17 @@ export default defineComponent({
   },
   components: {
     VueSpinner,
+  },
+  emits: ['clickTooltip'],
+  setup(_, { emit }) {
+    const onClickTooltip = (e: MouseEvent) => {
+      e.preventDefault();
+      emit('clickTooltip');
+    };
+
+    return {
+      onClickTooltip,
+    };
   },
 });
 </script>
@@ -70,7 +85,7 @@ export default defineComponent({
 
 .button:disabled {
   background: var(--theme-disabled-color);
-  cursor: auto;
+  cursor: not-allowed;
 }
 
 .button.button__disabled {
@@ -106,5 +121,35 @@ export default defineComponent({
 .button.button__secondary.button__disabled {
   border: 1px solid var(--theme-disabled-color);
   color: var(--theme-disabled-color);
+}
+.tooltip {
+  display: inline-block;
+  /* border-bottom: 1px dotted black; */
+  position: relative;
+}
+
+.tooltip .tooltiptext {
+  visibility: hidden;
+  background-color: #333333;
+  padding: 12px 16px 12px 16px;
+  color: #fff;
+  font-size: 12px;
+  line-height: 14.32px;
+  text-align: center;
+  border-radius: 10px;
+  font-weight: 600;
+  border: none !important;
+  /* Position the tooltip */
+  position: absolute;
+  z-index: 3;
+  top: calc(100%);
+  left: 50%;
+  white-space: nowrap;
+  transform: translate(-50%, 0);
+}
+
+.tooltip:hover>.tooltiptext {
+  visibility: visible;
+  text-transform: initial;
 }
 </style>

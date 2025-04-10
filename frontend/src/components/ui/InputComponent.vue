@@ -1,5 +1,7 @@
 <template>
-  <input type="text" v-model="innerValue" />
+  <input type="text" v-model="innerValue"
+  :style="{'cursor': clickable ? 'pointer' : 'auto'}"
+  @click="handleClick" />
 </template>
 
 <script lang="ts">
@@ -12,20 +14,40 @@ export default defineComponent({
       type: String,
       required: true,
     },
+    field: {
+      type: String,
+      required: false,
+    },
+    clickable: {
+      type: Boolean,
+      required: false,
+    },
   },
-  emits: ['update:value'],
+  emits: ['update:value', 'handleClick'],
   setup(props, { emit }) {
     const innerValue = computed({
       get() {
+        if (props.field && props.field === 'forecastField' && typeof (props.value) === 'number') {
+          const val = Math.round(props.value * 10) / 10;
+          return val;
+        }
         return props.value;
       },
       set(newValue) {
         emit('update:value', newValue);
       },
     });
+    const handleClick = (e: MouseEvent) => {
+      if (!props.clickable) {
+        return;
+      }
+      e.preventDefault();
+      emit('handleClick');
+    };
 
     return {
       innerValue,
+      handleClick,
     };
   },
 });

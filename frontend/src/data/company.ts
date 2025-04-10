@@ -159,7 +159,7 @@ export const tableRows = [  // eslint-disable-line
     prop: 'stockPriceChange',
   },
   {
-    name: 'Average Market Cap',
+    name: 'Market Cap',
     prop: 'averageMarketCap',
     renderer: numeric,
   },

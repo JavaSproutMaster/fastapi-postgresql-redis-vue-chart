@@ -1,13 +1,19 @@
 <template>
-  <th :colspan="colspan">
-    <div class="table-category">
+  <th :colspan="spanLen" v-if="spanLen > 0" >
+    <div class="table-category"
+    :class="{'comment_category' : cat==='comment'}">
       <slot />
     </div>
   </th>
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import {
+  valuationColumns, historicalPerformanceColumns, forecastColumns, fundmentalColumns,
+} from '@/data/list';
+import { removeFields } from '@/views/list/data';
+import { computed, defineComponent } from 'vue';
+import { useStore } from 'vuex';
 
 export default defineComponent({
   name: 'CategoryComponent',
@@ -16,6 +22,54 @@ export default defineComponent({
       type: Number,
       default: 1,
     },
+    cat: {
+      type: String,
+      required: false,
+    },
+  },
+  setup(props) {
+    const store = useStore();
+    const viewType = computed(() => store.state.application.listViewType);
+
+    const spanLen = computed(() => {
+      const removedFields = store.state.application.listRemoveFields;
+      const valuationFieldLen = valuationColumns
+        .filter((column) => !removedFields.includes(column.key)).length;
+      const historicalPerformanceFieldLen = historicalPerformanceColumns
+        .filter((column) => !removedFields.includes(column.key)).length;
+      const forecastFieldLen = forecastColumns
+        .filter((column) => !removedFields.includes(column.key)).length;
+      const fundamentalFieldLen = fundmentalColumns
+        .filter((column) => !removedFields.includes(column.key)).length;
+      // eslint-disable-next-line no-nested-ternary
+      const commentFieldLen = removedFields.includes('comment') ? 0 : (viewType.value === 'extended' ? 1 : 3);
+      const myCat = props.cat;
+      let result = 1;
+      switch (myCat) {
+        case 'valuation':
+          result = valuationFieldLen;
+          break;
+        case 'performance':
+          result = historicalPerformanceFieldLen;
+          break;
+        case 'forecast':
+          result = forecastFieldLen;
+          break;
+        case 'fundamentals':
+          result = fundamentalFieldLen;
+          break;
+        case 'comment':
+          result = commentFieldLen;
+          break;
+        default:
+          result = 1;
+          break;
+      }
+      return result;
+    });
+    return {
+      spanLen,
+    };
   },
 });
 </script>
@@ -38,4 +92,9 @@ th {
   letter-spacing: 0.5px;
   text-transform: uppercase;
 }
+
+.comment_category {
+  padding: 0 5px;
+}
+
 </style>

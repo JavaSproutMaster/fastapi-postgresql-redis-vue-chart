@@ -14,53 +14,52 @@ import {
 
 import { CompanyController } from '@/controllers/company/types';
 import { Chart, ChartData } from '@/rest-api/companies/assets';
+import { chartFields, companyChartOptions } from '@/data/chart';
+import { ChartField } from '@/components/ui/table-column/types';
+import { useStore } from 'vuex';
 
 export const useChart = ( // eslint-disable-line
   type: Ref<string>,
   period: Ref<string>,
-  initialOptions: ChartOptions,
   company: CompanyController,
+  leftAxis: any,
+  rightAxis: any,
+  isPercentOnLeftAxis: boolean,
+  kind?: string,
 ) => {
+  const store = useStore();
   const loading = ref(true);
   const reactiveDataset: ChartDataset<'line'>[] = reactive([]);
   const data: ChartJSData<'line'> = {
     labels: [],
     datasets: [],
   };
-
-  const options = computed(() => {
-    const opt = { ...initialOptions };
-
-    if (!opt.scales || !opt.scales['y-right'] || !opt.scales['y-right'].ticks) {
-      console.log('not found');
-      return opt;
+  const chartParams = computed(() => {
+    if (!kind) {
+      return store.state.application.chartParams;
     }
-
-    if (!reactiveDataset.some((row) => row.yAxisID === 'y-right')) {
-      opt.scales['y-right'].ticks.display = false;
-    } else {
-      opt.scales['y-right'].ticks.display = true;
-    }
-
-    return opt;
+    return ['stockPrice'];
   });
 
   const createDataset = (label: string, values: ChartData[], color: string, axis: string) => {
-    const dataset: number[] = [];
+    const dataset: any[] = [];
+    if (!data.labels?.length) return;
 
-    for (let i = 0; i < values.length; i += 1) {
-      if (!data.labels?.includes(values[i].label)) {
-        data.labels?.push(values[i].label);
-      }
-
+    for (let i = 0; i < data.labels.length; i += 1) {
+      const aLabel = data.labels[i];
+      const filteredValues = values.filter((value) => value.label === aLabel);
+      const value = filteredValues.length > 0 ? filteredValues[0].value : null;
       if (type.value === 'rebased') {
         if (i === 0) {
           dataset.push(0);
-        } else {
-          dataset.push(values[i].value / values[0].value - 1);
+        } else if (filteredValues.length === 0) dataset.push(null);
+        else if (filteredValues.length > 0) {
+          if (value) {
+            dataset.push(((value - values[0].value) / Math.abs(values[0].value)) * 100);
+          } else dataset.push(null);
         }
       } else {
-        dataset.push(values[i].value);
+        dataset.push(value);
       }
     }
 
@@ -74,7 +73,6 @@ export const useChart = ( // eslint-disable-line
       fill: true,
       backgroundColor: 'transparent',
     };
-
     if (dataset.length > 0) {
       reactiveDataset.push(object);
       data.datasets?.push(object);
@@ -91,30 +89,45 @@ export const useChart = ( // eslint-disable-line
     company.getChartData(period.value).then((payload) => {
       Object.keys(payload).forEach((key) => {
         const chartKey = key as keyof Chart;
-        let label: string;
-        let color: string;
-        let axis = 'y-right';
-
-        switch (chartKey) {
-          case 'stockPrice':
-            label = 'Stock price';
-            color = '#9650FB';
-            axis = 'y-left';
-            break;
-          case 'freeCashFlowPerShare':
-            label = 'Free cash flow per share';
-            color = '#3348FB';
-            axis = type.value === 'rebased' ? 'y-left' : 'y-right';
-            break;
-          case 'earningsPerShare':
-            label = 'Earnings per share';
-            color = '#37D27F';
-            axis = type.value === 'rebased' ? 'y-left' : 'y-right';
-            break;
-          default:
-            return;
+        // if (chartKey === 'stockPrice') {
+        //   for (let i = 0; i < payload[chartKey].length; i += 1) {
+        //     const values = payload[chartKey];
+        //     data.labels?.push(values[i].label);
+        //   }
+        // }
+        if (!chartParams.value?.includes(chartKey.toString())) return;
+        for (let i = 0; i < payload[chartKey].length; i += 1) {
+          const values = payload[chartKey];
+          if (!data.labels?.includes(values[i].label)) {
+            data.labels?.push(values[i].label);
+          }
         }
-
+      });
+      // if (period.value === '10Y' || period.value === '5Y' ||
+      // period.value === '1Y') data.labels?.sort();
+      // console.log(chartParams.value);
+      Object.keys(payload).forEach((key) => {
+        const chartKey = key as keyof Chart;
+        // console.log(chartKey);
+        if (!chartParams.value?.includes(chartKey.toString())) return;
+        let label = '';
+        let color = '';
+        let axis = 'y-right';
+        chartFields.forEach((field: ChartField) => {
+          if (chartKey === field.key) {
+            label = field.name;
+            color = field.color;
+            if (type.value === 'rebased') {
+              axis = 'y-left';
+            } else if (field.handler === 'percentage' && isPercentOnLeftAxis) {
+              axis = 'y-left';
+            } else {
+              axis = field.axis;
+            }
+          }
+        });
+        // console.log(label);
+        // console.log(payload[chartKey]);
         createDataset(label, payload[chartKey], color, axis);
       });
     }).finally(() => {
@@ -124,13 +137,12 @@ export const useChart = ( // eslint-disable-line
 
   const computedData = computed(() => data);
 
-  watch(() => [period.value, type.value], update);
+  watch(() => [period.value, type.value, chartParams.value.length], update);
 
   update();
 
   return {
     loading,
-    options,
     data: computedData,
   };
 };

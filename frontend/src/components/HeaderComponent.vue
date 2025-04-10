@@ -4,12 +4,15 @@
       <img src="@/assets/logo.svg" alt="TopFunds">
     </div>
     <nav>
-      <router-link to="/">Section 1</router-link> |
+      <!-- <router-link to="/">Section 1</router-link> |
       <router-link to="/">Section 2</router-link> |
       <router-link to="/">Section 3</router-link> |
-      <router-link to="/">Section 4</router-link>
+      <router-link to="/">Section 4</router-link> -->
+      <HeaderSearchComponent />
     </nav>
     <div class="header-toggle">
+      <HeaderAlertComponent />
+      <AvatarComponent />
       <Toggle :values="toggleValues" v-model:value="toggleValue" />
     </div>
   </header>
@@ -17,13 +20,18 @@
 
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
-
+import HeaderSearchComponent from './header/HeaderSearchComponent.vue';
+import AvatarComponent from './header/AvatarComponent.vue';
+import HeaderAlertComponent from './header/HeaderAlertComponent.vue';
 import Toggle from './ui/ToggleComponent.vue';
 
 export default defineComponent({
   name: 'HeaderComponent',
   components: {
     Toggle,
+    AvatarComponent,
+    HeaderAlertComponent,
+    HeaderSearchComponent,
   },
   setup() {
     const toggleValues = ref(['Light', 'Pro']);
@@ -70,5 +78,7 @@ header > .header-toggle {
 header > .header-toggle {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 23px;
 }
 </style>

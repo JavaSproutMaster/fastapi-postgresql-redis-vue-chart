@@ -1,5 +1,5 @@
 <template>
-  <Modal class="modal__list" name="new-list" v-on:shown="reset">
+  <Modal class="modal__list" name="new-list">
     <h3>New List</h3>
     <Input placeholder="Enter a name for the new list" v-model:value="listName" />
     <Button
@@ -13,7 +13,7 @@
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
 import { useStore } from 'vuex';
-import { useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 
 import Modal from '@/components/ModalComponent.vue';
 
@@ -25,7 +25,7 @@ import * as api from '@/rest-api/lists';
 import { HIDE_MODAL } from '@/store/actions/application';
 
 export default defineComponent({
-  name: 'ForecastModal',
+  name: 'NewListModal',
   components: {
     Modal,
     Input,
@@ -33,21 +33,20 @@ export default defineComponent({
   },
   setup() {
     const store = useStore();
-    const router = useRouter();
+    const route = useRoute();
 
     const listName = ref('');
     const loading = ref(false);
 
     const onClickSave = () => {
       loading.value = true;
-
-      api.create(listName.value).then(async (payload) => {
+      const symbol = route.params.symbol as string;
+      api.create(listName.value, symbol).then(async (payload) => {
         loading.value = false;
         store.commit(HIDE_MODAL);
-
-        await router.push({ name: 'list', params: { id: payload.id } });
-
-        window.location.reload();
+        if (payload.id) {
+          window.location.href = (`/list/${payload.id}`);
+        }
       });
     };
 

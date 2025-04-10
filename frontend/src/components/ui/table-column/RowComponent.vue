@@ -1,6 +1,6 @@
 <template>
   <td>
-    <div class="table-row">
+    <div class="table-row" :class="dataKey">
       <slot :instance="instance || {}" :index="index || 0" />
     </div>
   </td>

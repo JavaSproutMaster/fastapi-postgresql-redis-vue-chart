@@ -1,3 +1,4 @@
+<!-- eslint-disable max-len -->
 <template>
   <div class="performance">
     <div class="performance-menu">
@@ -12,13 +13,87 @@
       <div class="performance-header">
         <h4>Financial Performance</h4>
         <div class="performance-params">
-          <div>Compare</div>
-          <div>Add Parameter</div>
-          <div>Expand</div>
-          <div>Share <img src="@/assets/icons/share.svg" alt="Share"></div>
+          <div class="performance-params-btn">Compare</div>
+          <Dropdown class="list-header-button"
+          :gap="'4px'"
+          :menuWidth="'200px'" :menuTransform="'none'">
+            <div class="performance-params-btn">Add Parameter</div>
+            <template #content>
+              <CollapseComponent
+              :bg-color="'#F4F6FF'"
+              :text="'Per Share'" :active="selectedFieldsAddParams === 'perShare'" :btnWidth="'100%'"
+                v-on:click-collapse="toggleCollapseAddPrams('perShare')">
+                <div class="list-column-fields">
+                  <div v-for="(field, index) in filteredPerShareFields" :key="index" class="list-column-field-item">
+                    <Checkbox v-model:value="field.value" v-on:update:value="toggleFields(field)" />
+                    {{ field.name }}
+                  </div>
+                </div>
+              </CollapseComponent>
+              <CollapseComponent
+              :bg-color="'#F4F6FF'"
+              :text="'PL'" :active="selectedFieldsAddParams === 'pl'" :btnWidth="'100%'"
+                v-on:click-collapse="toggleCollapseAddPrams('pl')">
+                <div class="list-column-fields">
+                  <div v-for="(field, index) in filteredPlFields" :key="index" class="list-column-field-item">
+                    <Checkbox v-model:value="field.value" v-on:update:value="toggleFields(field)" />
+                    {{ field.name }}
+                  </div>
+                </div>
+              </CollapseComponent>
+              <CollapseComponent
+              :bg-color="'#F4F6FF'"
+              :text="'CF'" :active="selectedFieldsAddParams === 'cf'" :btnWidth="'100%'"
+                v-on:click-collapse="toggleCollapseAddPrams('cf')">
+                <div class="list-column-fields">
+                  <div v-for="(field, index) in filteredCfFields" :key="index" class="list-column-field-item">
+                    <Checkbox v-model:value="field.value" v-on:update:value="toggleFields(field)" />
+                    <div>
+                      {{ field.name }}
+                    </div>
+                  </div>
+                </div>
+              </CollapseComponent>
+              <CollapseComponent
+              :bg-color="'#F4F6FF'"
+              :text="'BS'" :active="selectedFieldsAddParams === 'bs'" :btnWidth="'100%'"
+                v-on:click-collapse="toggleCollapseAddPrams('bs')">
+                <div class="list-column-fields">
+                  <div v-for="(field, index) in filteredBsFields" :key="index" class="list-column-field-item">
+                    <Checkbox v-model:value="field.value" v-on:update:value="toggleFields(field)" />
+                    {{ field.name }}
+                  </div>
+                </div>
+              </CollapseComponent>
+              <CollapseComponent
+              :bg-color="'#F4F6FF'"
+              :text="'Valuation'" :active="selectedFieldsAddParams === 'valuation'" :btnWidth="'100%'"
+                v-on:click-collapse="toggleCollapseAddPrams('valuation')">
+                <div class="list-column-fields">
+                  <div v-for="(field, index) in filteredValuationFields" :key="index" class="list-column-field-item">
+                    <Checkbox v-model:value="field.value" v-on:update:value="toggleFields(field)" />
+                    {{ field.name }}
+                  </div>
+                </div>
+              </CollapseComponent>
+              <CollapseComponent
+              :bg-color="'#F4F6FF'"
+              :text="'Other'" :active="selectedFieldsAddParams === 'other'" :btnWidth="'100%'"
+                v-on:click-collapse="toggleCollapseAddPrams('other')">
+                <div class="list-column-fields">
+                  <div v-for="(field, index) in filteredOtherFields" :key="index" class="list-column-field-item">
+                    <Checkbox v-model:value="field.value" v-on:update:value="toggleFields(field)" />
+                    {{ field.name }}
+                  </div>
+                </div>
+              </CollapseComponent>
+            </template>
+          </Dropdown>
+          <div class="performance-params-btn">Expand</div>
+          <div class="performance-params-btn">Share <img src="@/assets/icons/share.svg" alt="Share"></div>
         </div>
       </div>
-      <div class="performance-control performance-control-top">
+      <!-- <div class="performance-control performance-control-top">
         <div class="performance-control-stats">
           <p>
             5Y price score: 110
@@ -26,7 +101,7 @@
           </p>
           <p>10Y return: 267.5%</p>
         </div>
-      </div>
+      </div> -->
       <div class="performance-control">
         <div class="performance-control-buttons">
           <Button
@@ -43,7 +118,8 @@
             5Y price score: 110
             <Help />
           </p>
-          <p>10Y return: 267.5%</p>
+          <p>10Y return: {{ totalReturn10Y }}</p>
+          <!-- <p></p> -->
         </div>
         <div class="performance-control-range">
           DATE RANGE:
@@ -57,22 +133,45 @@
           >{{ range }}</Button>
         </div>
       </div>
-      <Chart :company="company" :period="currentRange" :type="currentType" />
+      <Chart :company="company" :period="currentRange" :type="currentType" :rows="updatedChartParams"/>
     </Card>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType, ref } from 'vue';
+import {
+  computed,
+  defineComponent,
+  onMounted,
+  PropType,
+  ref,
+} from 'vue';
 
 import Button from '@/components/ui/ButtonComponent.vue';
 import Card from '@/components/ui/CardComponent.vue';
 import Help from '@/components/ui/HelpComponent.vue';
+import { DropdownComponent as Dropdown } from '@/components/ui/dropdown';
 
 import { CompanyController } from '@/controllers/company/types';
 
-import { availableRanges, availableTypes } from '@/data/chart';
+import {
+  perShareFields,
+  availableRanges,
+  availableTypes,
+  bsFields, cfFields,
+  otherFields,
+  plFields,
+  valuationFields,
+  initialChartParams,
+  chartFields,
+} from '@/data/chart';
+import Checkbox from '@/components/ui/CheckboxComponent.vue';
+import CollapseComponent from '@/components/ui/CollapseComponent.vue';
 
+import { useStore } from 'vuex';
+import { CHART_PARAMS, CHART_PERIOD } from '@/store/actions/application';
+import { ChartField, CheckBoxField } from '@/components/ui/table-column/types';
+import { percentage } from '@/services/renderers';
 import Chart from './chart';
 
 export default defineComponent({
@@ -82,6 +181,9 @@ export default defineComponent({
     Card,
     Help,
     Chart,
+    Dropdown,
+    Checkbox,
+    CollapseComponent,
   },
   props: {
     company: {
@@ -89,22 +191,81 @@ export default defineComponent({
       required: true,
     },
   },
-  setup() {
+  setup(props) {
     const storedRange = localStorage.getItem('chart-range');
     const currentRange = ref<string>(storedRange || availableRanges[0]);
-
+    const store = useStore();
+    const filteredPerShareFields = ref(perShareFields);
+    const filteredCfFields = ref(cfFields);
+    const filteredBsFields = ref(bsFields);
+    const filteredPlFields = ref(plFields);
+    const filteredValuationFields = ref(valuationFields);
+    const filteredOtherFields = ref(otherFields);
     const storedType = localStorage.getItem('chart-type');
     const currentType = ref<string>(storedType || availableTypes[0]);
-
+    const selectedFieldsAddParams = ref<string | undefined>(undefined);
+    const totalReturn10Y = computed(() => percentage(props.company.valuation.totalReturn10y));
+    const initialFilteredFields = (initFields: CheckBoxField[], checkedFields: string[]) => {
+      if (checkedFields.length === 0) return initFields;
+      const fields: CheckBoxField[] = initFields.map((f: CheckBoxField) => ({
+        ...f, // Spread the existing properties of f
+        value: checkedFields.includes(f.key), // Set the value based on the condition
+      }));
+      return fields;
+    };
+    const storedParams = JSON.parse(localStorage.getItem('chart-params') || JSON.stringify(initialChartParams));
+    const updatedChartParams = computed(() => {
+      const rows = store.state.application.chartParams.map((key: string) => {
+        const chartRow: any = chartFields.find((field: ChartField) => field.key === key);
+        return chartRow;
+      }).filter(Boolean);
+      return rows;
+    });
+    const chartParams = ref<string[]>(storedParams);
+    const initialFields = () => {
+      filteredPerShareFields.value = initialFilteredFields(perShareFields, storedParams);
+      filteredCfFields.value = initialFilteredFields(cfFields, storedParams);
+      filteredBsFields.value = initialFilteredFields(bsFields, storedParams);
+      filteredPlFields.value = initialFilteredFields(plFields, storedParams);
+      filteredValuationFields.value = initialFilteredFields(valuationFields, storedParams);
+      filteredOtherFields.value = initialFilteredFields(otherFields, storedParams);
+    };
     const selectRange = (range: string): void => {
+      store.commit(CHART_PERIOD, range);
       localStorage.setItem('chart-range', range);
       currentRange.value = range;
     };
+    const toggleFields = (field: CheckBoxField) => {
+      // check the fields
+      // let currentFields: CheckBoxField[] = [];
+      // const selectedParams = chartParams.value;
 
+      const exist = chartParams.value.find((f: string) => f === field.key);
+      if (!exist) chartParams.value.push(field.key);
+      else {
+        chartParams.value.forEach((f: string, index: number) => {
+          if (f === field.key) {
+            chartParams.value.splice(index, 1);
+          }
+        });
+      }
+      // chartParams.value = selectedParams;
+      localStorage.setItem('chart-params', JSON.stringify(chartParams.value));
+      store.commit(CHART_PARAMS, chartParams.value);
+    };
+    const toggleCollapseAddPrams = (val: string) => {
+      if (selectedFieldsAddParams.value === val) {
+        selectedFieldsAddParams.value = undefined;
+      } else selectedFieldsAddParams.value = val;
+    };
     const selectType = (type: string): void => {
       localStorage.setItem('chart-type', type);
       currentType.value = type;
     };
+
+    onMounted(() => {
+      initialFields();
+    });
 
     return {
       availableRanges,
@@ -112,8 +273,26 @@ export default defineComponent({
       currentRange,
       storedType,
       currentType,
+      perShareFields,
+      cfFields,
+      bsFields,
+      plFields,
+      valuationFields,
+      otherFields,
+      filteredPerShareFields,
+      filteredCfFields,
+      filteredBsFields,
+      filteredPlFields,
+      filteredValuationFields,
+      filteredOtherFields,
+      chartParams,
+      selectedFieldsAddParams,
+      updatedChartParams,
+      totalReturn10Y,
+      toggleFields,
       selectRange,
       selectType,
+      toggleCollapseAddPrams,
     };
   },
 });
@@ -158,17 +337,20 @@ export default defineComponent({
   display: flex;
   align-items: center;
   gap: 16px;
-  font-size: 12px;
+}
+
+.performance > .performance-chart > .performance-header > .performance-params
+.performance-params-btn {
+  display: flex;
+  align-items: center;
+  border: none;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
   font-weight: 800;
   text-transform: uppercase;
   color: var(--theme-link-color);
-}
-
-.performance > .performance-chart > .performance-header > .performance-params > div {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
+  background: none;
 }
 
 .performance > .performance-chart > .performance-control {
@@ -218,9 +400,38 @@ export default defineComponent({
     display: flex;
   }
 
-  .performance > .performance-chart > .performance-control:not(.performance-control-top)
+  /* .performance > .performance-chart > .performance-control:not(.performance-control-top)
   > .performance-control-stats {
     display: none;
-  }
+  } */
+}
+
+.list-column-fields {
+  width: 144px;
+  padding: 0 6px;
+}
+
+.list-column-field-item {
+  width: 140px;
+  display: flex;
+  align-items: center;
+  text-align: left;
+  padding: 7px 0;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 8px;
+}
+
+.list-column-field-item>.checkbox {
+  border-radius: 2px;
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 1px;
+  border: 1.4px solid #9AA6FA !important;
+  width: 18px;
+  height: 18px;
+}
+.list-column-field-item> div {
+  width: 121px;
 }
 </style>

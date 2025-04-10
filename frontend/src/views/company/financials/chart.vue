@@ -3,23 +3,25 @@
     <Card>
       <div class="financials-chart-control">
         <div
-          v-for="(row, index) in tableRows"
+          v-for="(row, index) in tableRows.slice(0, 30)"
           :key="index"
           class="financials-chart-value"
         >
           <Checkbox
             type="big"
             :value="selectedRows.includes(row)"
-            @click="toggleSelect(row)"
+            @click="toggleSelect(row, index)"
           />
           <span>{{ (index + 1).toString().padStart(2, '0') }}</span>
-          <p>{{ row.name }} + test</p>
+          <p>{{ row.name }}</p>
         </div>
       </div>
     </Card>
     <Card>
       <div class="financials-chart-header">
-        <p v-if="isLeftAxis">US$<br>Millions</p>
+        <p v-if="showPercentOnLeftAxis" style="padding-left: 20px;">%</p>
+        <p v-else-if="isLeftAxis">{{ company.data.currency === 'USD' ? 'US$' :
+        company.data.currency }}<br>Millions</p>
         <p v-else></p>
         <button @click="forecastMenu = !forecastMenu">
           {{ company.forecast.value ? company.forecast.value.name : 'Forecast' }}
@@ -49,7 +51,8 @@
             >{{ forecast.name }}</button>
           </div>
         </button>
-        <p v-if="rightAxis === 'ratio'">US$ Per<br>Share</p>
+        <p v-if="rightAxis === 'ratio'">{{ company.data.currency === 'USD' ? 'US$' :
+        company.data.currency }} Per<br>Share</p>
         <p v-else-if="rightAxis === 'percentage'">%</p>
         <p v-else></p>
       </div>
@@ -78,7 +81,7 @@ import {
 } from 'vue';
 
 import { Line } from 'vue-chartjs';
-import { ChartDataset, ChartData as ChartJSData } from 'chart.js';
+import { ChartDataset, ChartOptions, ChartData as ChartJSData } from 'chart.js';
 
 import Card from '@/components/ui/CardComponent.vue';
 import Checkbox from '@/components/ui/CheckboxComponent.vue';
@@ -92,8 +95,12 @@ import { CompanyController } from '@/controllers/company/types';
 
 import { percentage } from '@/services/renderers';
 
+import { ratio } from '@/components/ui/table/types/renderers';
+import { useStore } from 'vuex';
+import { SELECTED_ROWS } from '@/store/actions/application';
 import chartOptions from './data/chart';
 import { tableRows, chartRows } from './data/rows';
+import { viewControl } from './data/controls';
 
 export default defineComponent({
   name: 'FinancialsChart',
@@ -113,22 +120,14 @@ export default defineComponent({
     },
   },
   setup(props) {
-    const selectedRows: TableRow[] = reactive([]);
+    const store = useStore();
+
+    const selectedRows:TableRow[] = reactive(store.state.application.selectedRows);
     const forecastMenu = ref(false);
 
     const computedData = computed(() => props.data);
-
+    const myChartRows = ref(chartRows);
     const { compile, clearCache } = useCompiler(computedData);
-
-    const toggleSelect = (row: TableRow) => {
-      const index = selectedRows.indexOf(row);
-
-      if (index >= 0) {
-        selectedRows.splice(index, 1);
-      } else {
-        selectedRows.push(row);
-      }
-    };
 
     const hexToRGB = (hex: string) => {
       const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -139,9 +138,18 @@ export default defineComponent({
       } : undefined;
     };
 
+    const showPercentOnLeftAxis = ref(false);
+
     const chartData = computed<ChartJSData<'line' | 'bar'>>(() => {
+      let actualData = props.company.financials.actual;
+      if (props.data && props.data.column === 'quarterlyPeriod') {
+        actualData = props.company.financials.quarterly;
+      }
+
+      const viewCount = props.data?.viewCount ? props.data?.viewCount : 11;
       const financials = [
-        ...props.company.financials.actual,
+        // ...props.company.financials.actual,
+        ...actualData.slice(-viewCount),
         ...props.company.financials.estimated,
         ...props.company.financials.projected,
       ];
@@ -157,16 +165,25 @@ export default defineComponent({
 
       selectedRows.forEach((row) => {
         const rowKey = row.key as keyof typeof chartRows;
-        const chartRow = chartRows[rowKey];
 
-        if (chartRow === undefined) {
+        if (myChartRows.value[rowKey] === undefined) {
           return;
         }
-
+        if (myChartRows.value[rowKey].type === 'percent') myChartRows.value[rowKey].axis = 'y-left';
+        if (showPercentOnLeftAxis.value && myChartRows.value[rowKey].axis === 'y-right' && myChartRows.value[rowKey].type === 'percent') {
+          myChartRows.value[rowKey].axis = 'y-left';
+        } else if (!showPercentOnLeftAxis.value && myChartRows.value[rowKey].axis === 'y-left' && myChartRows.value[rowKey].type === 'percent') {
+          myChartRows.value[rowKey].axis = 'y-right';
+        }
+        const chartRow = myChartRows.value[rowKey];
         const dataset: number[] = [];
 
         financials.forEach((financial) => {
-          const label = financial.year;
+          let label = financial.year;
+          if (props.data && props.data.column === 'quarterlyPeriod' && financial.quarter) {
+            // label = `Q${financial.quarter}'${financial.year}`;
+            label = financial.quarterlyPeriod;
+          }
 
           if (data.labels && !data.labels.includes(label)) {
             data.labels.push(label);
@@ -197,12 +214,17 @@ export default defineComponent({
             borderWidth: 3,
             borderColor: (context: any) => {
               const rgb = hexToRGB(chartRow.color);
-              if (context.dataset && rgb) {
+              if (context.dataset && rgb && context.dataset.data.length > 0) {
                 const { ctx, chartArea } = context.chart;
+                if (!chartArea) {
+                  // If chartArea is not defined, return a default color or gradient
+                  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 1)`;
+                }
+                const transparentIndex = props.data?.viewCount === 6 ? 6 : actual;
                 const gradient = ctx.createLinearGradient(chartArea.left, 0, chartArea.right, 0);
                 gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 1)`);
-                gradient.addColorStop((actual + 0.5) / context.dataset.data.length, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 1)`);
-                gradient.addColorStop((actual + 0.5) / context.dataset.data.length, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, .4)`);
+                gradient.addColorStop((transparentIndex + 0.5) / context.dataset.data.length, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 1)`);
+                gradient.addColorStop((transparentIndex + 0.5) / context.dataset.data.length, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, .4)`);
                 gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, .4)`);
                 return gradient;
               }
@@ -222,7 +244,7 @@ export default defineComponent({
               }
               return color.index < actual ? chartRow.color : 'black';
             },
-            barThickness: 12,
+            barThickness: 6,
             borderRadius: 2,
           };
         }
@@ -236,18 +258,152 @@ export default defineComponent({
       return data;
     });
 
+    const toggleSelect = (row: TableRow, selectedIndex: number) => {
+      const index = selectedRows.indexOf(row);
+      if (index >= 0) {
+        selectedRows.splice(index, 1);
+      } else {
+        selectedRows.push(row);
+      }
+      let isPershareAxis = false;
+      let isPercentAxis = false;
+      let isMillionsAxis = false;
+
+      selectedRows.forEach((row) => {
+        const rowKey = row.key as keyof typeof chartRows;
+        const chartRow = myChartRows.value[rowKey];
+        if (chartRow === undefined) {
+          return;
+        }
+
+        if (chartRow.type === 'millions') isMillionsAxis = true;
+        if (chartRow.type === 'percent') isPercentAxis = true;
+        if (chartRow.type === 'perShare') isPershareAxis = true;
+      });
+      const isPercentOnLeftAxis = !isMillionsAxis && isPershareAxis && isPercentAxis;
+      showPercentOnLeftAxis.value = isPercentOnLeftAxis;
+      store.commit(SELECTED_ROWS, selectedRows);
+    };
     const isLeftAxis = computed(() => selectedRows.some((row) => {
       const rowKey = row.key as keyof typeof chartRows;
-      const chartRow = chartRows[rowKey];
-
+      const chartRow = myChartRows.value[rowKey];
       return chartRow && chartRow.axis === 'y-left';
     }));
+    const chartOptions = computed<ChartOptions>(() => {
+      const leftAxisRange = showPercentOnLeftAxis.value ? 100 : 10e5;
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false,
+          },
+          tooltip: {
+            displayColors: false,
+            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+            titleFont: {
+              size: 12,
+              family: 'Gilroy',
+            },
+            bodyFont: {
+              size: 12,
+              family: 'Gilroy',
+              style: 'normal',
+            },
+          },
+        },
+        interaction: {
+          intersect: false,
+          mode: 'index',
+        },
+        scales: {
+          'y-right': {
+            type: 'linear',
+            position: 'right',
+            grid: {
+              display: false,
+            },
+            border: {
+              display: false,
+            },
+            ticks: {
+              display: true,
+              padding: 10,
+              color: '#808080',
+              font: {
+                size: 10,
+                family: 'Gilroy',
+                style: 'normal',
+                lineHeight: 2,
+              },
+            },
+          },
+          'y-left': {
+            type: 'linear',
+            position: 'left',
+            grid: {
+              display: true,
+              drawOnChartArea: true,
+              drawTicks: false,
+            },
+            border: {
+              display: false,
+            },
+            suggestedMin: 0,
+            suggestedMax: leftAxisRange,
+            ticks: {
+              display: showPercentOnLeftAxis.value || isLeftAxis.value,
+              padding: 10,
+              color: '#808080',
+              font: {
+                size: 10,
+                family: 'Gilroy',
+                style: 'normal',
+                lineHeight: 2,
+              },
+              callback: (tickValue, index, ticks) => {
+                if (typeof tickValue === 'number') {
+                  // const value = tickValue / 10e5;
+                  const value = showPercentOnLeftAxis.value ? tickValue : tickValue / 10e5;
+                  if (value < 0) {
+                    return `(${Math.abs(value).toLocaleString()})`;
+                  }
 
+                  return value.toLocaleString();
+                }
+
+                return tickValue;
+              },
+            },
+          },
+          x: {
+            offset: true,
+            grid: {
+              display: false,
+            },
+            border: {
+              display: false,
+            },
+            ticks: {
+              display: true,
+              color: '#808080',
+              padding: 20,
+              font: {
+                size: 10,
+                family: 'Gilroy',
+                style: 'normal',
+                lineHeight: 2,
+              },
+            },
+          },
+        },
+      };
+    });
+    // check if right axis represents a percentage...
     const rightAxis = computed(() => {
       const rows = selectedRows.filter((row) => {
         const rowKey = row.key as keyof typeof chartRows;
-        const chartRow = chartRows[rowKey];
-
+        const chartRow = myChartRows.value[rowKey];
         return chartRow.axis === 'y-right';
       });
 
@@ -268,7 +424,16 @@ export default defineComponent({
           return color as string;
         }
       }
-      return item.borderColor as string;
+      const tableRow = tableRows.find((row) => row.name === item.label);
+      if (tableRow === undefined) {
+        return 'black';
+      }
+      const rowKey = tableRow.key as keyof typeof chartRows;
+      const chartRow = chartRows[rowKey];
+      if (chartRow === undefined) {
+        return 'black';
+      }
+      return chartRow.color;
     };
 
     onUpdated(() => {
@@ -278,6 +443,7 @@ export default defineComponent({
     return {
       forecastMenu,
       selectedRows,
+      showPercentOnLeftAxis,
       tableRows,
       chartOptions,
       chartData,

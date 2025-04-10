@@ -12,6 +12,7 @@ interface Company {
   shortName: string;
   keywords: string;
   logo: string;
+  currency: string;
   stockPrice: number;
   stockPriceChange: number;
   week52High: number;

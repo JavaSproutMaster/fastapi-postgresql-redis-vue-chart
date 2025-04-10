@@ -19,6 +19,9 @@ import Input from '@/components/ui/InputComponent.vue';
 import Button from '@/components/ui/ButtonComponent.vue';
 
 import * as api from '@/rest-api/lists';
+import store from '@/store';
+import { SHOW_MODAL } from '@/store/actions/application';
+import { useStore } from 'vuex';
 
 export default defineComponent({
   name: 'ListNameModal',
@@ -34,14 +37,17 @@ export default defineComponent({
     },
   },
   setup(props) {
+    const store = useStore();
     const listName = ref('');
     const loading = ref(false);
 
     const onClickSave = () => {
       loading.value = true;
 
-      api.edit(props.listId, listName.value).then((payload) => {
-        window.location.reload();
+      api.edit(props.listId, listName.value).then((payload: any) => {
+        if (payload.status === 403) {
+          store.commit(SHOW_MODAL, 'duplicate-list');
+        } else window.location.reload();
       });
     };
 

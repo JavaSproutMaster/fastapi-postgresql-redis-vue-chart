@@ -1,14 +1,11 @@
 <template>
   <Card class="summary">
     <div class="summary-logo">
-      <img
-        src="https://papik.pro/grafic/uploads/posts/2023-04/thumbs/1681551617_papik-pro-p-logotip-naik-na-belom-fone-vektor-44.png"
-        alt="Logo"
-      >
+      <ImageLoader :imageUrl="logoUrl" :maxWidth="100"/>
     </div>
     <div class="summary-stats">
-      <p>Founded: <span>{{ company.data.founded.toLocaleString() }}</span></p>
-      <p>Employees: <span>{{ company.data.employees.toLocaleString() }}</span></p>
+      <p>Founded: <span>{{ company.data.founded?.toLocaleString() }}</span></p>
+      <p>Employees: <span>{{ company.data.employees?.toLocaleString() }}</span></p>
     </div>
     <div class="summary-text">
       <p>
@@ -20,8 +17,8 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType } from 'vue';
-
+import { defineComponent, PropType, computed } from 'vue';
+import ImageLoader from '@/components/ui/ImageLoader.vue';
 import Card from '@/components/ui/CardComponent.vue';
 
 import { CompanyController } from '@/controllers/company/types';
@@ -30,12 +27,26 @@ export default defineComponent({
   name: 'CompanySummary',
   components: {
     Card,
+    ImageLoader,
   },
   props: {
     company: {
       type: Object as PropType<CompanyController>,
       required: true,
     },
+  },
+  setup(props) {
+    const logoUrl = computed(() => {
+      const { logo } = props.company.data;
+      if (logo && logo.length > 0 && !logo.includes('https://')) {
+        return `/files/companies/img/${logo}`;
+      }
+      return logo;
+    });
+
+    return {
+      logoUrl,
+    };
   },
 });
 </script>
@@ -63,13 +74,20 @@ export default defineComponent({
 .summary p > span {
   font-weight: 400;
 }
-
-.summary > .summary-logo > img {
-  max-height: 60px;
+.summary > .summary-logo {
+  width: auto;
+  display: flex;
+  align-items: center;
+  background: #2f2f2f;
+}
+.summary > .summary-logo > div > img {
+  /* max-height: 73px; */
+  /* width: 70px; */
+  max-height: 149px;
 }
 
 .summary > .summary-stats {
-  flex: .15;
+  /* flex: .15; */
 }
 
 .summary > .summary-text {

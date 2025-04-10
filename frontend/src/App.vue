@@ -1,19 +1,24 @@
 <template>
   <Preloader />
   <div class="wrapper">
-    <Header />
+    <Header v-if="path !== 'topFundLanding'" />
+    <LandingHeader v-if="path === 'topFundLanding'" />
     <router-view />
-    <Footer />
+    <Footer v-if="path !== 'topFundLanding'" />
+    <LandingFooter v-if="path === 'topFundLanding'" />
     <NewListModal />
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineComponent, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 
 import Preloader from './components/PreloaderComponent.vue';
 import Header from './components/HeaderComponent.vue';
 import Footer from './components/FooterComponent.vue';
+import LandingHeader from './views/landing/layout/LandingHeader.vue';
+import LandingFooter from './views/landing/layout/LandingFooter.vue';
 
 import NewListModal from './components/modals/NewListModal.vue';
 
@@ -23,15 +28,24 @@ export default defineComponent({
     Preloader,
     Header,
     Footer,
+    LandingHeader,
+    LandingFooter,
     NewListModal,
   },
   setup() {
     const wrapper: HTMLElement | null = document.querySelector('#app');
-
+    const route = useRoute();
+    const path = ref('');
+    watch(route, (newRoute) => {
+      if (newRoute.name) {
+        path.value = newRoute.name.toString();
+      }
+    });
     if (!wrapper) {
-      return;
+      return {
+        path,
+      };
     }
-
     const resize = () => {
       wrapper.style.transform = `scale(${window.innerWidth / 1512})`;
       document.body.style.height = `${wrapper.getBoundingClientRect().height}px`;
@@ -40,6 +54,9 @@ export default defineComponent({
     resize();
 
     window.addEventListener('resize', resize);
+    return {
+      path,
+    };
   },
 });
 </script>

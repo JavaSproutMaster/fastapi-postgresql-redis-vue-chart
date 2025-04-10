@@ -1,81 +1,91 @@
 <template>
   <div
     class="table"
+    style="position: relative"
+    :class="{
+      'table__comment': isCommentEnabled
+    }"
   >
-    <div class="table-modal" v-if="commentModal && isCommentModalShown"
-      :style="{ top: modalPosition.Y + 'px', left: modalPosition.X + 'px' }">
-      <Card>
-        <div class="table-modal-header">
-          <div class="table-modal-header-section">
-            <img src="@/assets/icons/info.svg" alt="Info">
-            <p>Comments are saved automatically</p>
-          </div>
-          <button @click="isCommentModalShown = false">
-            <img src="@/assets/icons/cross.svg" alt="Cross">
-          </button>
-        </div>
-        <div class="table-modal-comments">
-          <div
-            v-for="(comment, index) in data.comments"
-            :key="index"
-            class="table-modal-comment"
-            :class="{
-              'table-modal-comment__expand': activeComment === index,
-            }"
-          >
-            <div class="table-modal-comment-visible">
-              <span>
-                {{ (getRowIndexByField(comment.field) + 1).toString().padStart(2, '0') }}
-              </span>
-              <p>{{ data.rows[getRowIndexByField(comment.field)]?.name.replace('ㅤ', '') }}</p>
-              <p class="table-comment-spoiler" v-if="activeComment !== index">{{ comment.text }}</p>
-              <button @click="activeComment = activeComment === index ? undefined : index">
-                <img src="@/assets/icons/arrow-small.svg" alt="Arrow">
-              </button>
+    <div class="table-modal" v-if="commentModal && isCommentModalShown" ref="modal">
+      <div class="table-modal-content">
+        <Card>
+          <div class="table-modal-header">
+            <div class="table-modal-header-section">
+              <img src="@/assets/icons/info.svg" alt="Info">
+              <p>Comments are saved automatically</p>
             </div>
-            <div class="table-modal-comment-hidden" v-if="activeComment === index">
-              <div class="table-modal-comment-title">
-                <input
-                  type="text"
-                  v-model="comment.title"
-                  placeholder="Enter header text"
-                  @change="saveComment(index)"
-                  v-if="!comment.column"
-                >
-                <p v-else>{{ new Date(comment.createdAt).toLocaleDateString() }}</p>
-                <div class="table-modal-comment-control">
-                  <button @click="deleteComment(index)">
-                    <img src="@/assets/icons/trash.svg" alt="Trash">
-                  </button>
-                </div>
+            <button @click="isCommentModalShown = false">
+              <img src="@/assets/icons/cross.svg" alt="Cross">
+            </button>
+          </div>
+          <div class="table-modal-comments">
+            <div
+              v-for="(comment, index) in data.comments"
+              :key="index"
+              class="table-modal-comment"
+              :class="{
+                'table-modal-comment__expand': activeComment === index,
+              }"
+            >
+              <div class="table-modal-comment-visible">
+                <span>
+                  {{ (getRowIndexByField(comment.field) + 1).toString().padStart(2, '0') }}
+                </span>
+                <p>{{ data.rows[getRowIndexByField(comment.field)]?.name.replace('ㅤ', '') }}</p>
+                <p class="table-comment-spoiler" v-if="activeComment !== index">
+                  {{ comment.text }}</p>
+                <button @click="activeComment = activeComment === index ? undefined : index">
+                  <img src="@/assets/icons/arrow-small.svg" alt="Arrow">
+                </button>
               </div>
-              <p>{{ new Date(comment.createdAt).toLocaleDateString() }}</p>
+              <div class="table-modal-comment-hidden" v-if="activeComment === index">
+                <div class="table-modal-comment-title">
+                  <input
+                    type="text"
+                    v-model="comment.title"
+                    placeholder="Enter header text"
+                    @change="saveComment(index)"
+                    v-if="!comment.column"
+                  >
+                  <p v-else>{{ new Date(comment.createdAt).toLocaleDateString() }}</p>
+                  <div class="table-modal-comment-control">
+                    <button @click="deleteComment(index)">
+                      <img src="@/assets/icons/trash.svg" alt="Trash">
+                    </button>
+                  </div>
+                </div>
+                <p v-if="!comment.column">{{ new Date(comment.createdAt).toLocaleDateString() }}</p>
 
-              <Textarea
-                v-model:value="comment.text"
-                placeholder="Enter comment text"
-                @change="saveComment(index)"
-              />
+                <Textarea
+                  v-model:value="comment.text"
+                  placeholder="Enter comment text"
+                  @change="saveComment(index)"
+                />
+              </div>
             </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
     </div>
     <table>
+      <ForecastEditingAskModal v-if="forecastEditingShow"/>
       <thead>
         <tr v-if="!data.hideCategories">
           <th
-            v-for="(category, index) in data.categories"
+            v-for="(category, index) in data.categories.filter((x) => !x.hidden)"
             :key="index"
             :colspan="
-              category.values.length + (
-                index === 0 || (
-                  data.comments !== undefined && index === data.categories.length - 1
+              (index === 0 ?
+              category.values.slice(0, data.viewCount).length :
+              (index === 3 && data?.viewCount === 6) ? 10 : category.values.length) + (
+                index === 0 || index === category.values.length - 1 || (
+                  data.comments !== undefined && index === data.categories.filter((x) => !x.hidden)
+                  .length - 1
                 ) ? 1 : 0
               )
             "
             class="table-category"
-          >{{ category.name }}</th>
+          >{{ category.name.toLowerCase() === 'quarterly' ? 'ACTUAL' : category.name }}</th>
         </tr>
         <tr class="table-columns">
           <th>{{ data.columnName || '' }}</th>
@@ -83,17 +93,31 @@
             v-for="(column, index) in columns"
             :key="index"
           >{{ column }}</th>
-          <th class="table-comment" v-if="data.comments !== undefined">
+          <th class="table-comment"
+          :class="{'table-comment-condensed-th': data.viewCount === 6}"
+          :colspan="(data?.viewCount === 6) ? 6 : 0"
+          v-if="data.comments !== undefined">
+          <button style="display: inline-flex; align-items: center;">
             <img src="@/assets/icons/comment.svg" alt="Comment">
+            <span
+                class="table-comment-condensed"
+                v-if="data.viewCount === 6">
+              Press on the icon to read the comments
+            </span>
+          </button>
           </th>
         </tr>
         <tr class="table-functions" v-if="hasFunctions">
-          <template v-for="(category, index) in data.categories" :key="index">
+          <template v-for="(category, index) in data.categories.filter(x => !x.hidden)"
+            :key="index">
             <th
               :colspan="
-                category.values.length + (
-                  index === 0 || (
-                    data.comments !== undefined && index === data.categories.length - 1
+                (index === 0 ?
+                category.values.slice(0, data.viewCount).length :
+                (index === 3 && data?.viewCount === 6) ? 10 : category.values.length) + (
+                  index === 0 || index === category.values.length - 1 || (
+                  data.comments !== undefined && index === data.categories.filter((x) => !x.hidden)
+                  .length - 1
                   ) ? 1 : 0
                 )
               "
@@ -107,10 +131,12 @@
       </thead>
       <tbody>
         <template v-for="(row, index) in data.rows" :key="index">
-          <tr>
-            <td class="table-row">
+          <tr v-if="!row.hidden">
+            <td class="table-row" @click="handleClick(row)">
               <span v-if="row.showCounter">{{ (index + 1).toString().padStart(2, '0') }}</span>
-              {{ row.name }}
+              <span class="financial-indicator"
+              v-if="data?.title === 'financials'">{{ row.name }}</span>
+              {{ data?.title !== 'financials' ? row.name : null }}
               <Help align="bottom" v-if="row.help">{{ row.help }}</Help>
             </td>
             <template
@@ -118,7 +144,8 @@
               :key="index"
             >
               <td
-                v-for="(value, index) in category.values"
+                v-for="(value, index) in (category.key === 'actual' || category.key === 'quarterly'
+                ? category.values.slice(-(data.viewCount ? data.viewCount : 0)) : category.values)"
                 :key="index"
                 :style="{
                   'font-size': override(row, category).size || '',
@@ -128,6 +155,7 @@
                     'cursor': (row.editable && category.editable) ? 'pointer' : '',
                   }"
                 class="table-value"
+                @dblclick="createComment($event, row.key, value[data.column])"
                 @click="
                   (data.comments !== undefined && isCommentEnabled
                     && !(row.editable && category.editable)) ?
@@ -145,48 +173,94 @@
                   )
                 "
               >
-                {{
-                  value[row.key] || value[row.key] === 0
-                    ? handleValue(row, value[row.key], value, category)
-                    : '-'
-                }}
+                <Help
+                  style="
+                    padding: 8px 0;
+                    margin-left: 4px;"
+                  align="left"
+                  hoverWidth="217px"
+                  hoverPadding="12px 16px 12px 16px"
+                  v-if="row.terminalHelp && data.tableType === 'estimateTable' && index === 4" >
+                  <p class="help-description"
+                    v-text="row.terminalHelp">
+                  </p>
+                </Help>
+                <div v-else>
+                  {{editableContext == value && editableKey == row.key ? undefined :
+                    value[row.key] || value[row.key] === 0
+                      ? handleValue(row, value[row.key], value, category)
+                      : '-'
+                  }}
+                </div>
                 <button
                   class="table-circle"
                   @click="showComment(getCommentIndex(row.key, value[data.column]))"
-                  v-if="getCommentIndex(row.key, value[data.column]) !== -1"
-                >•</button>
-                <input
+                  v-if="(getCommentIndex(row.key, value[data.column]) !== -1) &&
+                  (editableContext !== value || editableKey !== row.key)"
+                >• </button>
+                <div style="display: block"
+                v-if="editableContext == value && editableKey == row.key">
+                  <div style="position: relative;">
+                    <p style="position: absolute; right: 3px; top: 4px;">%</p>
+                    <input
+                      type="text"
+                      v-model="value[row.key]"
+                      class="table-editable"
+                    />
+                    <!-- <Input
+                      v-model:value="value[row.key]"
+                      :field="'forecastField'"
+                      class="table-editable"
+                      @change="onEditEvent"
+                      /> -->
+                  </div>
+                </div>
+                <!-- <input
                   type="text"
                   v-model="value[row.key]"
                   class="table-editable"
                   @input="onEditEvent"
                   v-if="editableContext == value && editableKey == row.key"
-                />
+                /> -->
                 <div class="table-new-comment"></div>
               </td>
             </template>
             <td
               class="table-comment"
+              :colspan="data?.viewCount === 6 ? 6 : 0"
               @click="(data.comments !== undefined && isCommentEnabled) &&
                 createComment($event, row.key)"
+              @dblclick="createComment($event, row.key)"
               v-if="data.comments !== undefined"
             >
               <button
+                style="display: inline-flex; align-items: center;"
                 @click="isCommentModalShown = true"
-                v-if="(data.comments || []).filter((x) => x.field === row.key).length > 0"
+                v-if="(data.comments || []).filter((x) => (x.field === row.key &&
+                  ((x.column === undefined || x.column === null) ||
+                  (data.column === 'quarterlyPeriod' ? x.column?.toString().indexOf('Q') === 0 :
+                  x.column?.toString().indexOf('Q') === -1)))).length > 0"
               >
-                <img src="@/assets/icons/comment.svg" alt="Comment">
+                <img src="@/assets/icons/comment.svg" alt="Comment" style="margin-top: 2px;">
+                <span
+                class="table-comment-condensed"
+                v-if="data.viewCount === 6">
+                  {{(data.comments || []).filter((x) => (x.field === row.key &&
+                  ((x.column === undefined || x.column === null) ||
+                  (data.column === 'quarterlyPeriod' ? x.column?.toString().indexOf('Q') === 0 :
+                  x.column?.toString().indexOf('Q') === -1))))
+                  .map((x) => x.text).join(", ")}}
+                </span>
               </button>
-              <div class="table-new-comment"></div>
             </td>
           </tr>
           <tr class="table-spacer" v-if="row.separate"></tr>
         </template>
         <component
-          v-for="(row, index) in rows"
+          v-for="(row, index) in rows.filter(row =>!row.hidden)"
           :key="index"
           :is="row"
-          :index="data.rows.length + index"
+          :index="data.rows.filter(row =>!row.hidden).length + index"
           :comments="data.comments !== undefined"
         />
       </tbody>
@@ -203,17 +277,20 @@ import {
   ref,
   onUpdated,
   useSlots,
+  watch,
 } from 'vue';
 import { useStore } from 'vuex';
 
 import { useCompiler } from '@/controllers/compiler';
 
-import { COMMENT_CURSOR } from '@/store/actions/application';
-
+import { COMMENT_CURSOR, SELECTED_ROWS } from '@/store/actions/application';
+import { useRouter, useRoute } from 'vue-router';
+import { typeControl } from '@/views/company/financials/data/controls';
+import Input from '@/components/ui/InputComponent.vue';
+import ForecastEditingAskModal from '../ForecastEditingAskModalComponent.vue';
 import Card from '../CardComponent.vue';
 import Textarea from '../TextareaComponent.vue';
 import Help from '../HelpComponent.vue';
-
 import {
   TableCategory,
   TableData,
@@ -227,6 +304,8 @@ export default defineComponent({
     Card,
     Textarea,
     Help,
+    Input,
+    ForecastEditingAskModal,
   },
   props: {
     data: {
@@ -242,30 +321,58 @@ export default defineComponent({
   emits: ['edit', 'newComment', 'editComment', 'deleteComment'],
   setup(props, { emit }) {
     const store = useStore();
-
+    const modal = ref();
+    const router = useRouter();
+    const route = useRoute();
     const slots = useSlots();
     const defaultSlot = slots.default && slots.default();
     const rows = defaultSlot?.filter((item) => (item.type as any).name === 'RowComponent') || [];
     const hasFunctions = !!slots.functions;
-
+    const forecastEditingShow = computed(() => props.data.columnName === 'Fiscal' && !store.state.application.forecastEditingModalShow && route.name === 'company');
     const editableContext = ref<any>();
     const editableKey = ref<string>();
 
     const isCommentModalShown = ref(false);
-    const modalPosition = ref<any>({ X: Number, Y: Number });
     const activeComment = ref<number | undefined>(undefined);
 
     const computedData = computed(() => props.data);
     const { compile, clearCache } = useCompiler(computedData);
+    const updatePosition = () => {
+      if (!modal.value) {
+        return;
+      }
+
+      const scale = Math.abs(window.innerWidth / 1512);
+
+      modal.value.style.height = `${window.innerHeight / scale}px`;
+      modal.value.style.top = '0px';
+
+      nextTick(() => {
+        modal.value.style.top = `${window.scrollY / scale}px`;
+      });
+    };
+
+    watch(isCommentModalShown, () => {
+      window.addEventListener('scroll', updatePosition);
+
+      nextTick(() => {
+        updatePosition();
+      });
+    });
 
     const isCommentEnabled = computed(() => store.state.application.commentCursor);
+
     const columns = computed(() => {
       const data: string[] = [];
       props.data.categories.forEach((category) => {
         if (!category.hidden) {
-          category.values.forEach((value) => {
-            data.push(value[props.data.column]);
-          });
+          // select the last viewCount values from category
+          category.values.slice(-(props.data.viewCount ? props.data.viewCount : 0))
+            .forEach((value) => {
+              if (props.data.column === 'quarterlyPeriod' && value.quarter) {
+                data.push(value.quarterlyPeriod);
+              } else data.push(value.year);
+            });
         }
       });
 
@@ -299,36 +406,32 @@ export default defineComponent({
       }
 
       const overrided = override(row, category);
-      if (row.key === 'enterpriseValue') {
-        console.log(' ******************************** here is enterprise value ******************************** ');
-        console.log(value);
-        console.log(' ******************************** here is context ********************************');
-        console.log(context);
-        console.log(' ******************************** here is category ********************************');
-        console.log(category);
-        console.log(' ******************************** here is render ********************************');
-        console.log(render);
-        console.log(' ******************************** here is expression ********************************');
-        console.log(expression);
-        console.log(' ******************************** here is overrided ********************************');
-        console.log(overrided);
-        if (overrided.handler && render) {
-          console.log(overrided.handler(expression));
-        }
-      }
+
       return overrided.handler && render ? overrided.handler(expression) : expression;
     };
 
     const onFieldChange = (column?: string, field?: string, value?: number) => {
       emit('edit', column, field, value);
     };
-
+    const handleClick = async (row: any) => {
+      if (props.data.title === 'financials') {
+        localStorage.setItem('financials-type', typeControl.CHART);
+        const initialSelectedRows: TableRow[] = [row];
+        store.commit(SELECTED_ROWS, initialSelectedRows);
+        const symbol = route.params.symbol as string;
+        await router.push({ name: 'companyFinancial', params: { id: symbol, rowKey: row.key } });
+      }
+    };
     const editValue = (context: any, key: string, value: any) => {
-      context[key] = value; // eslint-disable-line
-      editableContext.value = context;
-      editableKey.value = key;
-
+      // setTimeout(() => {
+      // context[key] = value; // eslint-disable-line
+      // editableContext.value = context;
+      // editableKey.value = key;
+      // }, 300);
       nextTick(() => {
+        context[key] = value; // eslint-disable-line
+        editableContext.value = context;
+        editableKey.value = key;
         const editable = document.querySelector('.table-editable');
 
         if (editable === undefined) {
@@ -343,12 +446,12 @@ export default defineComponent({
               return;
             }
           }
-
           if (editableContext.value && editableKey.value) {
+            // console.log(props.data.column);
             const numeric = Number(editableContext.value[editableKey.value as string]);
             if (!Number.isNaN(numeric)) {
               onFieldChange(
-                editableContext.value[props.data.column],
+                editableContext.value.year,
                 editableKey.value,
                 numeric,
               );
@@ -375,24 +478,19 @@ export default defineComponent({
     const showComment = (index: number) => {
       activeComment.value = index;
       isCommentModalShown.value = true;
-      // store.commit(COMMENT_CURSOR, false);
+      store.commit(COMMENT_CURSOR, false);
     };
 
     const closeComment = () => {
       isCommentModalShown.value = false;
-      // store.commit(COMMENT_CURSOR, true);
+      window.removeEventListener('scroll', updatePosition);
+
+      store.commit(COMMENT_CURSOR, true);
     };
 
     const createComment = (event: MouseEvent, field: string, column?: string) => {
+      if (editableContext.value) return;
       // Get mouse coordinates relative to the document
-      const mouseX = event.pageX - (event.pageX - 300) * (1 / 2);
-      const mouseY = event.pageY - window.innerHeight * (1 / 2)
-        - (event.pageY - window.scrollY - window.innerHeight / 2) / 5 + 50;
-      const modalWidth = 850; // Adjust as needed
-      const documentWidth = document.documentElement.clientWidth;
-      const documentHeight = document.documentElement.clientHeight;
-      const modalX = Math.min(mouseX, documentWidth - modalWidth);
-      modalPosition.value = { X: modalX, Y: mouseY };
       emit('newComment', {
         column,
         field,
@@ -400,15 +498,17 @@ export default defineComponent({
         text: '',
         createdAt: (new Date()).toISOString(),
       });
-
       if ((props.data.comments?.length || 0) > 0) {
         showComment(0);
       }
     };
 
+    // get index if this cell has a comment on (field, column)
+    // field: rowField : "Earnings per share", column: columnLabel: "Q12023"
     const getCommentIndex = (field: string, column: string) => (
-      props.data.comments || []
-    ).findIndex((x) => x.field === field && x.column == column);  // eslint-disable-line
+      props.data.comments || []).findIndex((x) => (x.field === field
+      && (x.column !== undefined && x.column !== null && x.column?.toString()
+      === column?.toString())));
 
     const saveComment = (index: number) => {
       emit('editComment', index);
@@ -425,9 +525,12 @@ export default defineComponent({
     return {
       rows,
       columns,
+      modal,
+      forecastEditingShow,
       hasFunctions,
       handleValue,
       editValue,
+      handleClick,
       onFieldChange,
       onEditEvent,
       editableContext,
@@ -435,7 +538,6 @@ export default defineComponent({
       activeComment,
       isCommentModalShown,
       isCommentEnabled,
-      modalPosition,
       createComment,
       getCommentIndex,
       showComment,
@@ -455,7 +557,6 @@ export default defineComponent({
   --font-size-10: 10px;
   --font-size-12: 12px;
   --font-size-14: 14px;
-  position: relative;
   display: flex;
   border-top-left-radius: 16px;
   border-top-right-radius: 16px;
@@ -471,14 +572,22 @@ export default defineComponent({
 
 .table > .table-modal {
   position: fixed;
+  width: 100%;
+  left: 0;
   /* position: fixed;
   top: 50%;
   left: 50%; */
+  display: flex;
   transform: translate(0%, 0%);
-  z-index: 10;
-  min-width: 428px;
+  align-items: center;
+  justify-content: center;
+  z-index: 99;
+  background: rgba(0, 0, 0, .7);
 }
-
+.table > .table-modal .table-modal-content {
+  width: 464px;
+  /* align-items: ; */
+}
 .table > .table-modal .table-modal-header {
   display: flex;
   align-items: center;
@@ -578,7 +687,7 @@ export default defineComponent({
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 7px;
+  margin-bottom: 16px;
 }
 
 .table > .table-modal .table-modal-comment .table-modal-comment-hidden
@@ -638,8 +747,8 @@ export default defineComponent({
 
 .table th, .table td {
   height: 100%;
-  min-width: 61px;
-  width: 61px;
+  /* min-width: 61px;
+  width: 61px; */
   padding: 0 3px;
 }
 
@@ -688,7 +797,9 @@ export default defineComponent({
   font-weight: 500;
   font-size: var(--font-size-10) !important;
 }
-
+.table .table-functions th > .condensed {
+  margin-right: 32px;
+}
 .table .table-functions th > *:last-child {
   margin-right: 0;
 }
@@ -699,13 +810,34 @@ export default defineComponent({
   box-sizing: border-box;
 }
 
+.table tbody > tr > .table-row:first-child:hover {
+  padding-left: 24px;
+  min-width: calc(154px + 24px);
+  box-sizing: border-box;
+}
+.table tbody > tr > .table-row .financial-indicator {
+  font-weight: 600;
+  min-width: calc(154px + 24px);
+  box-sizing: border-box;
+  font-size: var(--font-size-12);
+  color: var(--theme-text-color);
+}
+.table tbody > tr > .table-row .financial-indicator:hover {
+  color: var(--theme-link-color);
+  cursor: pointer;
+}
 .table tbody > tr > .table-row > span {
   font-size: var(--font-size-10);
   font-weight: 400;
   color: var(--theme-text-gray-3);
   padding-right: 8px;
 }
-
+.table tbody > tr > .table-row > label {
+  font-size: var(--font-size-12);
+  font-weight: 500;
+  color: var(--theme-text-gray);
+  padding-right: 8px;
+}
 .table tbody > tr > td {
   --padding-right: 7px;
   border-top: 1px solid var(--theme-background-color);
@@ -727,10 +859,20 @@ export default defineComponent({
 
 .table .table-comment {
   position: relative;
-  width: 36px;
-  min-width: 36px;
+  /* width: 36px;
+  min-width: 36px; */
   padding-right: 24px;
   box-sizing: border-box;
+}
+
+.table .table-comment.table-comment-condensed-th {
+  width: 300px;
+  min-width: 300px;
+}
+
+.table .table-comment.table-comment-condensed-th >span {
+  margin-left: 4px;
+  color: #3348fa;
 }
 
 .table .table-comment > button {
@@ -741,20 +883,20 @@ export default defineComponent({
 }
 
 .table .table-editable {
-  position: absolute;
+  /* position: absolute;
   top: 20%;
-  left: 50%;
+  left: 50%; */
   max-width: 100%;
   width: 100%;
   height: 120%;
-  transform: translate(-50%, -20%);
+  /* transform: translate(-50%, -20%); */
   border: none;
   outline: none;
   border-radius: 8px;
   box-shadow: 0px 4px 24px 0px rgba(51, 72, 251, 0.3), 0px 4px 16px 0px rgba(0, 0, 0, 0.05);
   text-align: center;
   z-index: 1;
-  padding: 0 8px;
+  padding: 4px 15px;
   color: var(--theme-link-color);
   font-weight: 500;
   font-size: var(--font-size-12);
@@ -786,7 +928,10 @@ export default defineComponent({
 .table.table__comment tbody > tr > td:hover > .table-new-comment {
   display: block;
 }
-
+.table .table-comment > button >span {
+  margin-left: 4px;
+  color: #3348fa;
+}
 /* @media screen and (max-width: 1512px) {
   .table {
     --font-size-12: 11px;

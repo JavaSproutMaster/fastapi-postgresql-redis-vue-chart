@@ -1,5 +1,15 @@
 import { ChartOptions } from 'chart.js';
+import { computed } from 'vue';
+import { useStore } from 'vuex';
+import { chartRows } from './rows';
 
+const store = useStore();
+const isLeftAxis = computed(() => store.state.application.selectedRows.some((row: any) => {
+  const rowKey = row.key as keyof typeof chartRows;
+  const chartRow = chartRows[rowKey];
+
+  return chartRow && chartRow.axis === 'y-left';
+}));
 const chartOptions: ChartOptions = {
   responsive: true,
   maintainAspectRatio: false,
@@ -39,6 +49,7 @@ const chartOptions: ChartOptions = {
         display: true,
         padding: 10,
         color: '#808080',
+        align: 'inner',
         font: {
           size: 10,
           family: 'Gilroy',
@@ -59,6 +70,8 @@ const chartOptions: ChartOptions = {
       border: {
         display: false,
       },
+      suggestedMin: 0,
+      suggestedMax: 10e5,
       ticks: {
         display: true,
         padding: 10,
@@ -72,7 +85,6 @@ const chartOptions: ChartOptions = {
         callback: (tickValue, index, ticks) => {
           if (typeof tickValue === 'number') {
             const value = tickValue / 10e5;
-
             if (value < 0) {
               return `(${Math.abs(value).toLocaleString()})`;
             }

@@ -3,6 +3,7 @@ export interface TableCategory {
   tableName?: string;
   key: string;
   values: any[];
+  actualValues?: any[];
   editable?: boolean;
   color?: string;
   hidden?: boolean;

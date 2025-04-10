@@ -51,6 +51,7 @@ export const estimateTableRows: TableRow[] = [  // eslint-disable-line
     showCounter: false,
     separate: false,
     handler: money,
+    terminalHelp: 'Assuming capitalisation of dividends (if payable)',
   },
   {
     name: 'ㅤPlus / (Less): Net Debt',
@@ -71,7 +72,8 @@ export const estimateTableRows: TableRow[] = [  // eslint-disable-line
     key: 'minorityInterest',
     showCounter: false,
     separate: false,
-    handler: ratio,
+    handler: money,
+    terminalHelp: 'Assuming dividends reinvested',
   },
   {
     name: 'Market cap',
